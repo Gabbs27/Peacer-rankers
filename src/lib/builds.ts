@@ -97,61 +97,88 @@ export function analyzeEnemyTeam(
     switch (type) {
       case "AP": apCount++; break;
       case "AD": adCount++; break;
-      case "TANK": tankCount++; break;
-      case "HYBRID": apCount += 0.5; adCount += 0.5; break;
+      case "TANK": tankCount++; adCount++; break; // Tanks deal mostly AD (autos)
+      case "HYBRID": apCount++; adCount++; break; // Count both for threat assessment
     }
   });
 
-  const total = apCount + adCount + tankCount || 1;
-  const apPercent = (apCount / total) * 100;
-  const adPercent = (adCount / total) * 100;
+  // For display: each champ counts once as their PRIMARY type
+  let displayAp = 0;
+  let displayAd = 0;
+  let displayTank = 0;
+  enemies.forEach((e) => {
+    const type = getChampionType(e.championName);
+    switch (type) {
+      case "AP": displayAp++; break;
+      case "AD": displayAd++; break;
+      case "TANK": displayTank++; break;
+      case "HYBRID": displayAp++; break; // Show hybrids as AP for simplicity
+    }
+  });
+
+  const total = enemies.length || 1;
+  // Use the threat counts (not display) for percentages
+  const threatTotal = apCount + adCount || 1;
+  const apPercent = (apCount / threatTotal) * 100;
+  const adPercent = (adCount / threatTotal) * 100;
 
   return {
-    apCount: Math.round(apCount),
-    adCount: Math.round(adCount),
-    tankCount,
+    apCount: displayAp,
+    adCount: displayAd,
+    tankCount: displayTank,
     apPercent,
     adPercent,
-    isApHeavy: apPercent >= 55,
-    isAdHeavy: adPercent >= 55,
-    isMixed: apPercent >= 30 && apPercent <= 55,
-    isTankHeavy: tankCount >= 2,
+    isApHeavy: displayAp >= 3,
+    isAdHeavy: displayAd >= 3,
+    isMixed: displayAp >= 2 && displayAd >= 2,
+    isTankHeavy: displayTank >= 2,
   };
 }
 
 export function getDefensiveRecommendations(
   analysis: TeamAnalysis,
-  position: string
+  position: string,
+  championName: string
 ): BuildRecommendation {
   const items: RecommendedItem[] = [];
-  const isCarry = ["MIDDLE", "BOTTOM", "TOP"].includes(position);
+  const champType = getChampionType(championName);
+  const isAP = champType === "AP";
+  const isAD = champType === "AD" || champType === "HYBRID";
   const isSupport = position === "UTILITY";
-  const isJungle = position === "JUNGLE";
+  const isTank = champType === "TANK";
 
   if (analysis.isApHeavy) {
-    // Anti-AP items
     items.push({
       name: "Mercury's Treads",
       itemId: 3111,
-      reason: "Resistencia mágica + tenacidad vs comp AP",
+      reason: "RM + tenacidad, obligatorio vs comp AP heavy",
     });
-    if (isCarry) {
+    if (isAD) {
       items.push({
         name: "Maw of Malmortius",
         itemId: 3156,
-        reason: "Escudo mágico que salva vs burst AP",
+        reason: "Escudo mágico + AD, ideal para tu campeón vs burst AP",
       });
       items.push({
         name: "Wit's End",
         itemId: 3091,
-        reason: "RM + velocidad de ataque, bueno vs AP",
+        reason: "RM + velocidad de ataque para campeones AD",
       });
     }
-    items.push({
-      name: "Spirit Visage",
-      itemId: 3065,
-      reason: "RM + curación aumentada, ideal vs mucho AP",
-    });
+    if (isAP) {
+      items.push({
+        name: "Banshee's Veil",
+        itemId: 3102,
+        reason: "RM + AP + escudo anti-habilidad, perfecto para mages",
+      });
+    }
+    if (isTank || isSupport) {
+      items.push({
+        name: "Spirit Visage",
+        itemId: 3065,
+        reason: "RM + curación aumentada, ideal para tanques/soportes",
+      });
+    }
     if (isSupport) {
       items.push({
         name: "Mikael's Blessing",
@@ -162,90 +189,138 @@ export function getDefensiveRecommendations(
   }
 
   if (analysis.isAdHeavy) {
-    // Anti-AD items
     items.push({
       name: "Plated Steelcaps",
       itemId: 3047,
-      reason: "Armadura + reducción de autoataques vs comp AD",
+      reason: "Armadura + reducción de autos vs comp AD heavy",
     });
-    if (isCarry || isJungle) {
-      items.push({
-        name: "Guardian Angel",
-        itemId: 3026,
-        reason: "Resurrección + armadura, te salva de assassins AD",
-      });
+    if (isAD) {
       items.push({
         name: "Death's Dance",
         itemId: 6333,
-        reason: "Armadura + daño diferido, muy fuerte vs AD",
+        reason: "Armadura + AD + daño diferido, perfecto para bruisers/assassins AD",
+      });
+      items.push({
+        name: "Guardian Angel",
+        itemId: 3026,
+        reason: "Resurrección + armadura + AD",
       });
     }
-    items.push({
-      name: "Randuin's Omen",
-      itemId: 3143,
-      reason: "Reduce daño crítico, ideal vs ADCs y AD crit",
-    });
-    if (isSupport) {
+    if (isAP) {
+      items.push({
+        name: "Zhonya's Hourglass",
+        itemId: 3157,
+        reason: "Armadura + AP + stasis, clave para mages vs assassins AD",
+      });
+    }
+    if (isTank || isSupport) {
       items.push({
         name: "Frozen Heart",
         itemId: 3110,
         reason: "Reduce velocidad de ataque enemiga, clave vs ADCs",
       });
+      items.push({
+        name: "Randuin's Omen",
+        itemId: 3143,
+        reason: "Reduce daño crítico, ideal vs ADCs crit",
+      });
     }
   }
 
-  if (analysis.isMixed) {
-    // Mixed defense
-    if (isCarry) {
+  if (analysis.isMixed && items.length === 0) {
+    if (isAD) {
       items.push({
         name: "Guardian Angel",
         itemId: 3026,
-        reason: "Bueno en comps mixtas por la resurrección",
+        reason: "Resurrección + armadura + AD, bueno en comps mixtas",
+      });
+      items.push({
+        name: "Maw of Malmortius",
+        itemId: 3156,
+        reason: "Escudo mágico + AD para campeones AD",
       });
     }
-    items.push({
-      name: "Gargoyle Stoneplate",
-      itemId: 3193,
-      reason: "Armadura + RM + escudo, ideal vs daño mixto",
-    });
+    if (isAP) {
+      items.push({
+        name: "Zhonya's Hourglass",
+        itemId: 3157,
+        reason: "Stasis + armadura + AP, siempre útil",
+      });
+      items.push({
+        name: "Banshee's Veil",
+        itemId: 3102,
+        reason: "Escudo anti-habilidad + RM + AP",
+      });
+    }
+    if (isTank || isSupport) {
+      items.push({
+        name: "Gargoyle Stoneplate",
+        itemId: 3193,
+        reason: "Armadura + RM + escudo, ideal vs daño mixto",
+      });
+    }
   }
 
   if (analysis.isTankHeavy) {
-    // Anti-tank items
-    items.push({
-      name: "Black Cleaver",
-      itemId: 3071,
-      reason: "Reduce armadura progresivamente, clave vs tanques",
-    });
-    items.push({
-      name: "Blade of the Ruined King",
-      itemId: 3153,
-      reason: "Daño basado en % de vida, destruye tanques",
-    });
-    if (position === "MIDDLE" || getChampionType("") === "AP") {
+    if (isAD) {
+      items.push({
+        name: "Black Cleaver",
+        itemId: 3071,
+        reason: "Reduce armadura progresivamente, clave para AD vs tanques",
+      });
+      items.push({
+        name: "Blade of the Ruined King",
+        itemId: 3153,
+        reason: "Daño % vida máxima, destruye tanques",
+      });
+    }
+    if (isAP) {
       items.push({
         name: "Void Staff",
         itemId: 3135,
-        reason: "Penetración mágica vs tanques con RM",
+        reason: "Penetración mágica, necesario para mages vs tanques con RM",
+      });
+      items.push({
+        name: "Liandry's Torment",
+        itemId: 6653,
+        reason: "Daño % vida + quemadura, ideal vs tanques como mage",
       });
     }
   }
 
-  // Determine title and reasoning
+  // Title and reasoning
   let title: string;
   let reasoning: string;
+  const champLabel = championName;
+
   if (analysis.isApHeavy) {
-    title = `Comp enemiga AP heavy (${analysis.apCount} AP)`;
-    reasoning = "Prioriza resistencia mágica. Mercury's Treads es casi obligatorio. Spirit Visage si necesitas sustain.";
+    title = `${champLabel} vs comp AP heavy (${analysis.apCount} AP)`;
+    reasoning = isAD
+      ? `Como campeón AD, prioriza Maw of Malmortius o Wit's End. Mercury's Treads casi obligatorio.`
+      : isAP
+      ? `Como mage, Banshee's Veil es tu mejor opción defensiva. Mercury's si necesitas tenacidad.`
+      : `Prioriza Spirit Visage y items de RM. Mercury's Treads obligatorio.`;
   } else if (analysis.isAdHeavy) {
-    title = `Comp enemiga AD heavy (${analysis.adCount} AD)`;
-    reasoning = "Prioriza armadura. Plated Steelcaps + un item de armadura temprano. Randuin's si hay ADC fed.";
+    title = `${champLabel} vs comp AD heavy (${analysis.adCount} AD)`;
+    reasoning = isAD
+      ? `Como campeón AD, Death's Dance es tu mejor defensivo. Plated Steelcaps ayudan mucho.`
+      : isAP
+      ? `Como mage, Zhonya's Hourglass es imprescindible vs assassins y ADCs.`
+      : `Frozen Heart y Randuin's son tus mejores opciones. Plated Steelcaps obligatorio.`;
   } else if (analysis.isTankHeavy) {
-    title = `Comp enemiga con ${analysis.tankCount} tanques`;
-    reasoning = "Necesitas penetración y daño %vida. Black Cleaver o BOTRK son clave para pelear peleas largas.";
+    title = `${champLabel} vs ${analysis.tankCount} tanques`;
+    reasoning = isAD
+      ? `Necesitas Black Cleaver o BOTRK para romper tanques con penetración y daño % vida.`
+      : isAP
+      ? `Void Staff es obligatorio. Liandry's Torment si peleas largas. No compres Shadowflame vs tanques.`
+      : `Enfócate en peeling y CC. Deja el daño a tus carries.`;
   } else {
-    title = "Comp enemiga mixta";
-    reasoning = "Daño balanceado del enemigo. Adapta tus defensivos según quién esté más fed en la partida.";
+    title = `${champLabel} vs comp mixta`;
+    reasoning = isAD
+      ? `Comp balanceada. Adapta según quién esté fed: Maw vs AP fed, Death's Dance vs AD fed.`
+      : isAP
+      ? `Comp balanceada. Zhonya's siempre es seguro. Banshee's si hay engage AP peligroso.`
+      : `Adapta tus defensivos según la mayor amenaza de la partida.`;
   }
 
   return { title, items: items.slice(0, 4), reasoning };

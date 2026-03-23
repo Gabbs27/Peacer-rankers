@@ -36,7 +36,7 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
   const perfScore = calculatePerformanceScore(player, match.info);
   const soloQ = ranked?.find((r) => r.queueType === "RANKED_SOLO_5x5");
   const enemyAnalysis = analyzeEnemyTeam(match.info, player.teamId);
-  const buildRec = getDefensiveRecommendations(enemyAnalysis, player.individualPosition);
+  const buildRec = getDefensiveRecommendations(enemyAnalysis, player.individualPosition, player.championName);
   const buildVerdict = analyzeBuildEfficiency(player, enemyAnalysis);
   const timeSince = getTimeSince(match.info.gameCreation);
   const items = [
