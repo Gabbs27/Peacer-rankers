@@ -60,4 +60,19 @@ export function getKDA(kills: number, deaths: number, assists: number): string {
   return ((kills + assists) / deaths).toFixed(2);
 }
 
+export function getMapName(mapId: number): string {
+  const mapNames: Record<number, string> = {
+    11: "Grieta del Invocador",
+    12: "ARAM",
+    21: "Nexus Blitz",
+    22: "TFT",
+    30: "Arena",
+  };
+  return mapNames[mapId] || "Otro";
+}
+
+export function getMapImageUrl(mapId: number): string {
+  return `${DDRAGON_BASE}/img/map/map${mapId}.png`;
+}
+
 export { DDRAGON_VERSION };
