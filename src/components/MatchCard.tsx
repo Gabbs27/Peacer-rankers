@@ -8,6 +8,7 @@ import {
   getQueueName,
   getMapName,
   getSummonerSpellIconUrl,
+  getMobafireSearchUrl,
 } from "@/lib/data-dragon";
 import { generateTips, generateTeamAnalysis } from "@/lib/tips";
 import ChampionIcon from "./ChampionIcon";
@@ -172,6 +173,19 @@ export default function MatchCard({ match, puuid }: Props) {
               </div>
             </div>
           )}
+
+          {/* Guide link */}
+          <div>
+            <a
+              href={getMobafireSearchUrl(player.championName)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600/80 hover:bg-orange-500/80 text-white text-sm font-semibold rounded-lg transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Ver Guías de {player.championName} en Mobafire
+            </a>
+          </div>
 
           {/* Objectives comparison */}
           {playerTeam && enemyTeam && (
