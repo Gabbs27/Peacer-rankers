@@ -51,7 +51,17 @@ export function calculatePerformanceScore(
   const macroRaw = macroBreakdown.reduce((s, b) => s + b.score, 0);
   const macro = macroMax > 0 ? Math.round((macroRaw / macroMax) * 100) : 0;
 
-  const overall = Math.round((micro + macro) / 2);
+  // Game length modifier: long games inflate stats (throws, extended fights)
+  // Optimal game length is 20-30 min. Penalize 35+ min games slightly.
+  let lengthMod = 1.0;
+  if (gameDurationMinutes > 40) lengthMod = 0.88;
+  else if (gameDurationMinutes > 35) lengthMod = 0.92;
+  else if (gameDurationMinutes > 30) lengthMod = 0.96;
+  else if (gameDurationMinutes < 15) lengthMod = 0.90; // remakes/stomps too short to evaluate
+  // Bonus for efficient mid-length games
+  else if (gameDurationMinutes >= 20 && gameDurationMinutes <= 28) lengthMod = 1.04;
+
+  const overall = Math.round(clamp((micro + macro) / 2 * lengthMod, 100));
   const { tier, division } = scoreToRank(overall);
 
   return {
@@ -76,13 +86,14 @@ function scoreLanerMicro(
 ): ScoreBreakdown[] {
   const breakdown: ScoreBreakdown[] = [];
 
-  // KDA (30)
-  const kda = p.deaths === 0 ? p.kills + p.assists : (p.kills + p.assists) / p.deaths;
+  // KDA (30) - cap perfect KDA to avoid long-game inflation
+  const rawKda = p.deaths === 0 ? p.kills + p.assists : (p.kills + p.assists) / p.deaths;
+  const kda = Math.min(rawKda, 12); // Cap at 12 to prevent 30/0 games from inflating
   breakdown.push({
     label: "KDA",
-    score: Math.round(clamp(lerp(kda, 0, 6, 30), 30)),
+    score: Math.round(clamp(lerp(kda, 0, 7, 30), 30)),
     maxScore: 30,
-    detail: `${kda.toFixed(2)} KDA`,
+    detail: `${rawKda.toFixed(2)} KDA`,
   });
 
   // CS/min (30)
@@ -180,13 +191,14 @@ function scoreJungleMicro(
 ): ScoreBreakdown[] {
   const breakdown: ScoreBreakdown[] = [];
 
-  // KDA (25)
-  const kda = p.deaths === 0 ? p.kills + p.assists : (p.kills + p.assists) / p.deaths;
+  // KDA (25) - cap to prevent long-game inflation
+  const rawKda = p.deaths === 0 ? p.kills + p.assists : (p.kills + p.assists) / p.deaths;
+  const kda = Math.min(rawKda, 12);
   breakdown.push({
     label: "KDA",
-    score: Math.round(clamp(lerp(kda, 0, 6, 25), 25)),
+    score: Math.round(clamp(lerp(kda, 0, 7, 25), 25)),
     maxScore: 25,
-    detail: `${kda.toFixed(2)} KDA`,
+    detail: `${rawKda.toFixed(2)} KDA`,
   });
 
   // CS/min - jungle camps matter more (20)
@@ -280,31 +292,32 @@ function scoreSupportMicro(
 ): ScoreBreakdown[] {
   const breakdown: ScoreBreakdown[] = [];
 
-  // KDA - deaths matter less, assists matter more (30)
-  const kda = p.deaths === 0 ? p.assists : p.assists / p.deaths;
+  // KDA ratio - use (kills+assists)/deaths, capped to avoid long-game inflation (30)
+  const kda = p.deaths === 0 ? Math.min(p.kills + p.assists, 15) : (p.kills + p.assists) / p.deaths;
   breakdown.push({
-    label: "Asist/Muerte",
+    label: "KDA",
     score: Math.round(clamp(lerp(kda, 0, 8, 30), 30)),
     maxScore: 30,
-    detail: `${kda.toFixed(2)} asist por muerte`,
+    detail: `${kda.toFixed(2)} KDA`,
   });
 
-  // Kill participation - key for supports (35)
+  // Kill participation - key for supports (40)
   const kp = teamKills > 0 ? ((p.kills + p.assists) / teamKills) * 100 : 0;
   breakdown.push({
     label: "Particip. Kills",
-    score: Math.round(clamp(lerp(kp, 25, 80, 35), 35)),
-    maxScore: 35,
+    score: Math.round(clamp(lerp(kp, 30, 80, 40), 40)),
+    maxScore: 40,
     detail: `${kp.toFixed(0)}% participación`,
   });
 
-  // Assists total (35)
-  const assistsPerMin = p.assists / mins;
+  // Death efficiency - fewer deaths relative to assists (30)
+  // A support with 0/4/20 = 5.0 ratio, 0/2/20 = 10.0 ratio
+  const assistDeathRatio = p.deaths === 0 ? Math.min(p.assists, 15) : p.assists / p.deaths;
   breakdown.push({
-    label: "Asistencias",
-    score: Math.round(clamp(lerp(assistsPerMin, 0, 0.6, 35), 35)),
-    maxScore: 35,
-    detail: `${p.assists} asistencias (${assistsPerMin.toFixed(1)}/min)`,
+    label: "Eficiencia",
+    score: Math.round(clamp(lerp(assistDeathRatio, 1, 8, 30), 30)),
+    maxScore: 30,
+    detail: `${assistDeathRatio.toFixed(1)} asist por muerte`,
   });
 
   return breakdown;
