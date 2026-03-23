@@ -140,7 +140,7 @@ export function getDefensiveRecommendations(
   position: string,
   championName: string
 ): BuildRecommendation {
-  const items: RecommendedItem[] = [];
+  let items: RecommendedItem[] = [];
   const champType = getChampionType(championName);
   const isAP = champType === "AP";
   const isAD = champType === "AD" || champType === "HYBRID";
@@ -321,6 +321,16 @@ export function getDefensiveRecommendations(
       : isAP
       ? `Comp balanceada. Zhonya's siempre es seguro. Banshee's si hay engage AP peligroso.`
       : `Adapta tus defensivos según la mayor amenaza de la partida.`;
+  }
+
+  // Safety filter: never recommend AP items to AD champs and vice versa
+  const apOnlyItems = new Set([3157, 3102, 3135, 6653]); // Zhonya, Banshee, Void Staff, Liandry
+  const adOnlyItems = new Set([3156, 3091, 6333, 3026, 3071, 3153]); // Maw, Wit's, DD, GA, BC, BOTRK
+  if (isAD) {
+    items = items.filter((i) => !apOnlyItems.has(i.itemId));
+  }
+  if (isAP) {
+    items = items.filter((i) => !adOnlyItems.has(i.itemId));
   }
 
   return { title, items: items.slice(0, 4), reasoning };
