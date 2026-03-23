@@ -187,7 +187,7 @@ export const REGION_LABELS: Record<Region, string> = {
 
 // Automated tips
 export interface Tip {
-  category: "cs" | "vision" | "kda" | "killParticipation" | "damage";
+  category: "cs" | "vision" | "kda" | "killParticipation" | "damage" | "duration" | "gold" | "teamAnalysis";
   level: "good" | "ok" | "bad";
   message: string;
   value: number;
