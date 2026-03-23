@@ -9,6 +9,7 @@ import {
   getMapName,
   getSummonerSpellIconUrl,
   getMobafireSearchUrl,
+  getUGGChampionUrl,
 } from "@/lib/data-dragon";
 import { generateTips, generateTeamAnalysis } from "@/lib/tips";
 import { calculatePerformanceScore } from "@/lib/scoring";
@@ -36,7 +37,8 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
   const tips = generateTips(player, match.info);
   const teamTips = generateTeamAnalysis(player.teamId, match.info);
   const perfScore = calculatePerformanceScore(player, match.info);
-  const soloQ = ranked?.find((r) => r.queueType === "RANKED_SOLO_5x5");
+  const soloQ = ranked?.find((r) => r.queueType === "RANKED_SOLO_5x5")
+    || ranked?.find((r) => r.queueType === "RANKED_FLEX_SR");
   const enemyAnalysis = analyzeEnemyTeam(match.info, player.teamId);
   const buildRec = getDefensiveRecommendations(enemyAnalysis, player.individualPosition, player.championName);
   const buildVerdict = analyzeBuildEfficiency(player, enemyAnalysis);
@@ -196,8 +198,19 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
             </div>
           )}
 
-          {/* Guide link */}
-          <div>
+          {/* Match info bar */}
+          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300 bg-gray-800/40 rounded-lg px-4 py-2">
+            <span className="font-medium text-gray-100">
+              {formatDuration(match.info.gameDuration)}
+            </span>
+            <span className="text-gray-500">·</span>
+            <span>{getMapName(match.info.mapId)}</span>
+            <span className="text-gray-500">·</span>
+            <span>{getQueueName(match.info.queueId)}</span>
+          </div>
+
+          {/* Guide links */}
+          <div className="flex flex-wrap gap-2">
             <a
               href={getMobafireSearchUrl(player.championName)}
               target="_blank"
@@ -205,7 +218,22 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
               className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600/80 hover:bg-orange-500/80 text-white text-sm font-semibold rounded-lg transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
-              Ver Guías de {player.championName} en Mobafire
+              Guías en Mobafire
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+            <a
+              href={getUGGChampionUrl(player.championName)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600/80 hover:bg-blue-500/80 text-white text-sm font-semibold rounded-lg transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Build en u.gg
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
             </a>
           </div>
 
@@ -214,6 +242,7 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
             recommendation={buildRec}
             analysis={enemyAnalysis}
             buildVerdict={buildVerdict}
+            championName={player.championName}
           />
 
           {/* Briar Guide - only for Briar players */}
@@ -322,14 +351,14 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
                           <span className="flex-1 truncate min-w-0">
                             {p.riotIdGameName || p.summonerName}
                           </span>
-                          <span className="text-gray-300 shrink-0">
+                          <span className="text-gray-200 shrink-0 font-medium">
                             {p.kills}/{p.deaths}/{p.assists}
                           </span>
                           <span
                             className={`text-xs w-14 text-right shrink-0 ${
                               p.totalDamageDealtToChampions === highestDmg
                                 ? "text-yellow-300 font-bold"
-                                : "text-gray-400"
+                                : "text-gray-300"
                             }`}
                           >
                             {(
@@ -337,10 +366,10 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
                             ).toFixed(1)}
                             k
                           </span>
-                          <span className="text-gray-400 text-xs w-10 text-right shrink-0 hidden sm:inline">
-                            {(p.goldEarned / 1000).toFixed(1)}k g
+                          <span className="text-yellow-400/70 text-xs w-10 text-right shrink-0 hidden sm:inline">
+                            {(p.goldEarned / 1000).toFixed(1)}k
                           </span>
-                          <span className="text-gray-400 text-xs w-8 text-right shrink-0 hidden sm:inline">
+                          <span className="text-blue-400/70 text-xs w-8 text-right shrink-0 hidden sm:inline">
                             {p.visionScore}v
                           </span>
                         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { getChampionIconUrl, getItemIconUrl, getMobafireSearchUrl } from "@/lib/data-dragon";
+import { getChampionIconUrl, getItemIconUrl, getMobafireSearchUrl, getUGGChampionUrl } from "@/lib/data-dragon";
 import { getRuneRecommendation } from "@/lib/runes";
 import { getBuildPath } from "@/lib/build-paths";
 import type { RuneRecommendation } from "@/lib/runes";
@@ -454,15 +454,26 @@ export default function PlannerPage() {
             </div>
           </div>
 
-          {/* Mobafire Link */}
-          <div className="pt-2">
+          {/* External Links */}
+          <div className="pt-2 flex flex-wrap gap-3">
             <a
               href={getMobafireSearchUrl(selectedChampion.id)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm"
             >
-              Ver Guia en Mobafire
+              Guías en Mobafire
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+            <a
+              href={getUGGChampionUrl(selectedChampion.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+            >
+              Build en u.gg
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>

@@ -4,6 +4,37 @@ import { MatchParticipant, MatchInfo } from "./types";
 // AP = ability power, AD = attack damage, TANK = primarily tank, HYBRID = mixed
 type DamageType = "AP" | "AD" | "TANK" | "HYBRID";
 
+// Normalize champion names from Riot API to our map keys
+const NAME_ALIASES: Record<string, string> = {
+  MonkeyKing: "Wukong",
+  FiddleSticks: "Fiddlesticks",
+  "Nunu & Willump": "Nunu",
+  NunuWillump: "Nunu",
+  "Dr. Mundo": "DrMundo",
+  "Cho'Gath": "Chogath",
+  "Bel'Veth": "Belveth",
+  "K'Sante": "KSante",
+  "Kog'Maw": "KogMaw",
+  "Kai'Sa": "KaiSa",
+  "Kha'Zix": "Khazix",
+  "Rek'Sai": "RekSai",
+  "Vel'Koz": "Velkoz",
+  "Xin Zhao": "XinZhao",
+  "Jarvan IV": "JarvanIV",
+  "Master Yi": "MasterYi",
+  "Miss Fortune": "MissFortune",
+  "Tahm Kench": "TahmKench",
+  "Aurelion Sol": "AurelionSol",
+  "Twisted Fate": "TwistedFate",
+  "Lee Sin": "LeeSin",
+};
+
+function normalizeChampionName(name: string): string {
+  if (NAME_ALIASES[name]) return NAME_ALIASES[name];
+  // Remove spaces, apostrophes, dots for lookup
+  return name.replace(/[\s'.]/g, "");
+}
+
 const CHAMPION_TYPES: Record<string, DamageType> = {
   // AP mages & AP assassins
   Ahri: "AP", Akali: "AP", Anivia: "AP", Annie: "AP", AurelionSol: "AP",
@@ -17,9 +48,9 @@ const CHAMPION_TYPES: Record<string, DamageType> = {
   Swain: "AP", Syndra: "AP", Taliyah: "AP", Teemo: "AP", TwistedFate: "AP",
   Veigar: "AP", Velkoz: "AP", Vex: "AP", Viktor: "AP", Vladimir: "AP",
   Xerath: "AP", Ziggs: "AP", Zilean: "AP", Zoe: "AP", Zyra: "AP",
-  Sylas: "AP", Smolder: "AP", Naafiri: "AP", Milio: "AP", Briar: "AD",
+  Sylas: "AP", Smolder: "AP", Naafiri: "AD", Milio: "AP", Briar: "AD",
   Belveth: "AD", Nilah: "AD", Zeri: "AD", Renata: "AP", Viego: "AD",
-  Gwen: "AP", Yone: "HYBRID", Samira: "AD", Rell: "TANK", Seraphine2: "AP",
+  Gwen: "AP", Yone: "HYBRID", Samira: "AD", Rell: "TANK",
 
   // AD fighters & assassins
   Aatrox: "AD", Camille: "AD", Darius: "AD", Draven: "AD", Fiora: "AD",
@@ -50,12 +81,36 @@ const CHAMPION_TYPES: Record<string, DamageType> = {
   // Others
   Bard: "AP", Heimerdinger: "AP", Janna: "AP", Kayle: "HYBRID",
   Mordekaiser: "AP", Nasus: "AD", Rakan: "AP", Senna: "AD",
-  Shyvana: "HYBRID", Trundle: "AD", Veigar2: "AP", Yuumi: "AP",
-  Ksante: "TANK", Naafiri2: "AD",
+  Shyvana: "HYBRID", Trundle: "AD", Yuumi: "AP",
 };
 
-function getChampionType(championName: string): DamageType {
-  return CHAMPION_TYPES[championName] || "AD";
+export function getChampionType(championName: string): DamageType {
+  const normalized = normalizeChampionName(championName);
+  return CHAMPION_TYPES[normalized] || "AD";
+}
+
+// Classify champion based on actual match damage data (fallback when not in map)
+function getChampionTypeFromMatchData(p: MatchParticipant): DamageType {
+  const magicDmg = p.magicDamageDealtToChampions || 0;
+  const physDmg = p.physicalDamageDealtToChampions || 0;
+  const totalDmg = magicDmg + physDmg || 1;
+
+  // Check if tank: low total damage but high HP/tankiness (use damage taken as proxy)
+  const totalDealt = p.totalDamageDealtToChampions || 0;
+  const totalTaken = p.totalDamageTaken || 0;
+  if (totalTaken > totalDealt * 1.5 && totalDealt < 15000) return "TANK";
+
+  if (magicDmg / totalDmg > 0.65) return "AP";
+  if (physDmg / totalDmg > 0.65) return "AD";
+  return "HYBRID";
+}
+
+// Get champion type, using match data as fallback for unknown champions
+function getChampionTypeWithFallback(championName: string, participant?: MatchParticipant): DamageType {
+  const normalized = normalizeChampionName(championName);
+  if (CHAMPION_TYPES[normalized]) return CHAMPION_TYPES[normalized];
+  if (participant) return getChampionTypeFromMatchData(participant);
+  return "AD";
 }
 
 export interface TeamAnalysis {
@@ -88,49 +143,46 @@ export function analyzeEnemyTeam(
 ): TeamAnalysis {
   const enemies = matchInfo.participants.filter((p) => p.teamId !== playerTeamId);
 
-  let apCount = 0;
-  let adCount = 0;
-  let tankCount = 0;
-
-  enemies.forEach((e) => {
-    const type = getChampionType(e.championName);
-    switch (type) {
-      case "AP": apCount++; break;
-      case "AD": adCount++; break;
-      case "TANK": tankCount++; adCount++; break; // Tanks deal mostly AD (autos)
-      case "HYBRID": apCount++; adCount++; break; // Count both for threat assessment
-    }
-  });
-
-  // For display: each champ counts once as their PRIMARY type
+  // Display counts: each champion counted ONCE in their PRIMARY category
   let displayAp = 0;
   let displayAd = 0;
   let displayTank = 0;
+
+  // Threat counts: used for item recommendations (HYBRID counts both, TANK counts as AD)
+  let threatAp = 0;
+  let threatAd = 0;
+
   enemies.forEach((e) => {
-    const type = getChampionType(e.championName);
+    const type = getChampionTypeWithFallback(e.championName, e);
+
+    // Display: each champ goes into exactly ONE bucket
     switch (type) {
       case "AP": displayAp++; break;
       case "AD": displayAd++; break;
       case "TANK": displayTank++; break;
-      case "HYBRID": displayAp++; break; // Show hybrids as AP for simplicity
+      case "HYBRID": displayAd++; break; // Show hybrids as AD for simplicity
+    }
+
+    // Threat: hybrids count as both threats, tanks as AD
+    switch (type) {
+      case "AP": threatAp++; break;
+      case "AD": threatAd++; break;
+      case "TANK": threatAd++; break;
+      case "HYBRID": threatAp++; threatAd++; break;
     }
   });
 
-  const total = enemies.length || 1;
-  // Use the threat counts (not display) for percentages
-  const threatTotal = apCount + adCount || 1;
-  const apPercent = (apCount / threatTotal) * 100;
-  const adPercent = (adCount / threatTotal) * 100;
+  const threatTotal = threatAp + threatAd || 1;
 
   return {
     apCount: displayAp,
     adCount: displayAd,
     tankCount: displayTank,
-    apPercent,
-    adPercent,
-    isApHeavy: displayAp >= 3,
-    isAdHeavy: displayAd >= 3,
-    isMixed: displayAp >= 2 && displayAd >= 2,
+    apPercent: (threatAp / threatTotal) * 100,
+    adPercent: (threatAd / threatTotal) * 100,
+    isApHeavy: threatAp >= 3,
+    isAdHeavy: threatAd >= 3,
+    isMixed: threatAp >= 2 && threatAd >= 2,
     isTankHeavy: displayTank >= 2,
   };
 }
@@ -323,20 +375,20 @@ export function getDefensiveRecommendations(
       : `Adapta tus defensivos según la mayor amenaza de la partida.`;
   }
 
-  // Safety filters
-  const apCarryItems = new Set([3157, 3102, 3135, 6653]); // Zhonya, Banshee, Void Staff, Liandry
-  const adCarryItems = new Set([3156, 3091, 6333, 3026, 3071, 3153]); // Maw, Wit's, DD, GA, BC, BOTRK
-  // Never recommend AP carry items to AD champs
-  if (isAD) {
-    items = items.filter((i) => !apCarryItems.has(i.itemId));
+  // ========== SAFETY FILTERS ==========
+  // ABSOLUTE safety: never recommend AP carry items to AD/Tank champs and vice versa
+  const apOnlyItems = new Set([3157, 3102, 3135, 6653]); // Zhonya, Banshee, Void Staff, Liandry
+  const adOnlyItems = new Set([3156, 3091, 6333, 3026, 3071, 3153]); // Maw, Wit's, DD, GA, BC, BOTRK
+
+  if (!isAP) {
+    items = items.filter((i) => !apOnlyItems.has(i.itemId));
   }
-  // Never recommend AD carry items to AP champs
-  if (isAP) {
-    items = items.filter((i) => !adCarryItems.has(i.itemId));
+  if (!isAD) {
+    items = items.filter((i) => !adOnlyItems.has(i.itemId));
   }
   // Supports should not get carry items - only support/tank items
   if (isSupport) {
-    const carryItems = new Set([...apCarryItems, ...adCarryItems]);
+    const carryItems = new Set([...apOnlyItems, ...adOnlyItems]);
     items = items.filter((i) => !carryItems.has(i.itemId));
   }
 
@@ -353,6 +405,20 @@ export function getDefensiveRecommendations(
     } else {
       items.push({ name: "Locket of the Iron Solari", itemId: 3190, reason: "Escudo para tu equipo en peleas" });
       items.push({ name: "Knight's Vow", itemId: 3109, reason: "Protege a tu carry, redirige daño" });
+    }
+  }
+
+  // If tank has no items after filtering, add tank-specific defaults
+  if (isTank && !isSupport && items.length === 0) {
+    if (analysis.isApHeavy) {
+      items.push({ name: "Spirit Visage", itemId: 3065, reason: "RM + curación aumentada" });
+      items.push({ name: "Mercury's Treads", itemId: 3111, reason: "RM + tenacidad vs comp AP" });
+    } else if (analysis.isAdHeavy) {
+      items.push({ name: "Frozen Heart", itemId: 3110, reason: "Reduce velocidad de ataque enemiga" });
+      items.push({ name: "Randuin's Omen", itemId: 3143, reason: "Reduce daño crítico, ideal vs ADCs" });
+    } else {
+      items.push({ name: "Gargoyle Stoneplate", itemId: 3193, reason: "Armadura + RM + escudo vs comp mixta" });
+      items.push({ name: "Spirit Visage", itemId: 3065, reason: "RM + curación aumentada" });
     }
   }
 

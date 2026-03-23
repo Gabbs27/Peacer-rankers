@@ -7,6 +7,7 @@ import {
   getMatches,
 } from "@/lib/riot-api";
 import PlayerStats from "@/components/PlayerStats";
+import MatchOverview from "@/components/MatchOverview";
 import MatchCard from "@/components/MatchCard";
 
 interface PageProps {
@@ -42,6 +43,9 @@ export default async function SummonerPage({ params }: PageProps) {
           gameName={account.gameName}
           tagLine={account.tagLine}
         />
+
+        {/* Match Overview */}
+        <MatchOverview matches={matches} puuid={account.puuid} />
 
         <div>
           <h2 className="text-xl font-bold mb-4">Historial de Partidas</h2>
