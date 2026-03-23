@@ -24,6 +24,9 @@ export default function RootLayout({
           <a href="/guides" className="text-sm text-orange-400 hover:text-orange-300 transition-colors">
             Guías
           </a>
+          <a href="/planner" className="text-sm text-orange-400 hover:text-orange-300 transition-colors">
+            Planner
+          </a>
         </nav>
         <main className="container mx-auto px-4 py-8">{children}</main>
       </body>
