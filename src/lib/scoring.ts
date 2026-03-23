@@ -5,12 +5,10 @@ import {
   ScoreBreakdown,
 } from "./types";
 
-// Clamp a value between 0 and max
 function clamp(value: number, max: number): number {
   return Math.max(0, Math.min(value, max));
 }
 
-// Linear interpolation: maps a value from [min, max] range to [0, targetMax] score
 function lerp(value: number, min: number, max: number, targetMax: number): number {
   if (value <= min) return 0;
   if (value >= max) return targetMax;
@@ -23,218 +21,42 @@ export function calculatePerformanceScore(
 ): PerformanceScore {
   const gameDurationMinutes = matchInfo.gameDuration / 60;
   const position = player.individualPosition;
-  const isSupport = position === "UTILITY";
-  const isJungle = position === "JUNGLE";
-
   const allies = matchInfo.participants.filter((p) => p.teamId === player.teamId);
   const playerTeam = matchInfo.teams.find((t) => t.teamId === player.teamId);
-
-  // ===== MICRO SCORE =====
-  const microBreakdown: ScoreBreakdown[] = [];
-
-  // KDA (weight: 25)
-  const kda =
-    player.deaths === 0
-      ? player.kills + player.assists
-      : (player.kills + player.assists) / player.deaths;
-  const kdaScore = clamp(lerp(kda, 0, 6, 25), 25);
-  microBreakdown.push({
-    label: "KDA",
-    score: Math.round(kdaScore),
-    maxScore: 25,
-    detail: `${kda.toFixed(2)} KDA`,
-  });
-
-  // CS/min (weight: 25, skip support)
-  if (!isSupport) {
-    const totalCS = isJungle
-      ? player.neutralMinionsKilled + player.totalMinionsKilled
-      : player.totalMinionsKilled + player.neutralMinionsKilled;
-    const csPerMin = totalCS / gameDurationMinutes;
-    const csScore = clamp(lerp(csPerMin, 2, 10, 25), 25);
-    microBreakdown.push({
-      label: "CS/min",
-      score: Math.round(csScore),
-      maxScore: 25,
-      detail: `${csPerMin.toFixed(1)} CS/min`,
-    });
-  } else {
-    // Support: assist ratio instead
-    const teamKills = allies.reduce((sum, p) => sum + p.kills, 0);
-    const assistRatio = teamKills > 0 ? player.assists / teamKills : 0;
-    const assistScore = clamp(lerp(assistRatio, 0.2, 0.9, 25), 25);
-    microBreakdown.push({
-      label: "Asistencias",
-      score: Math.round(assistScore),
-      maxScore: 25,
-      detail: `${(assistRatio * 100).toFixed(0)}% de kills asistidas`,
-    });
-  }
-
-  // Damage share (weight: 20, skip support)
-  if (!isSupport) {
-    const teamDamage = allies.reduce(
-      (sum, p) => sum + p.totalDamageDealtToChampions,
-      0
-    );
-    const dmgShare = teamDamage > 0
-      ? (player.totalDamageDealtToChampions / teamDamage) * 100
-      : 0;
-    const dmgScore = clamp(lerp(dmgShare, 5, 35, 20), 20);
-    microBreakdown.push({
-      label: "Daño",
-      score: Math.round(dmgScore),
-      maxScore: 20,
-      detail: `${dmgShare.toFixed(0)}% del daño del equipo`,
-    });
-  } else {
-    // Support: CC/utility contribution via damage taken ratio (tanking for team)
-    const teamDmgTaken = allies.reduce((sum, p) => sum + p.totalDamageTaken, 0);
-    const tankShare = teamDmgTaken > 0
-      ? (player.totalDamageTaken / teamDmgTaken) * 100
-      : 0;
-    const tankScore = clamp(lerp(tankShare, 5, 30, 20), 20);
-    microBreakdown.push({
-      label: "Presencia",
-      score: Math.round(tankScore),
-      maxScore: 20,
-      detail: `${tankShare.toFixed(0)}% del daño absorbido`,
-    });
-  }
-
-  // Kill participation (weight: 15)
   const teamKills = allies.reduce((sum, p) => sum + p.kills, 0);
-  const kp = teamKills > 0 ? ((player.kills + player.assists) / teamKills) * 100 : 0;
-  const kpScore = clamp(lerp(kp, 20, 80, 15), 15);
-  microBreakdown.push({
-    label: "Particip. Kills",
-    score: Math.round(kpScore),
-    maxScore: 15,
-    detail: `${kp.toFixed(0)}% participación`,
-  });
 
-  // Multi-kills bonus (weight: 15)
-  const multiKillPoints =
-    player.doubleKills * 2 +
-    player.tripleKills * 5 +
-    player.quadraKills * 10 +
-    player.pentaKills * 15 +
-    (player.firstBloodKill ? 3 : 0) +
-    Math.min(player.largestKillingSpree, 8);
-  const multiScore = clamp(lerp(multiKillPoints, 0, 20, 15), 15);
-  microBreakdown.push({
-    label: "Jugadas",
-    score: Math.round(multiScore),
-    maxScore: 15,
-    detail: multiKillPoints > 0
-      ? `${player.doubleKills}x2, ${player.tripleKills}x3, ${player.quadraKills}x4, ${player.pentaKills}x5`
-      : "Sin multi-kills",
-  });
+  let microBreakdown: ScoreBreakdown[];
+  let macroBreakdown: ScoreBreakdown[];
 
-  const microTotal = microBreakdown.reduce((sum, b) => sum + b.score, 0);
-
-  // ===== MACRO SCORE =====
-  const macroBreakdown: ScoreBreakdown[] = [];
-
-  // Vision score/min (weight: 30 for support, 25 for others)
-  const visionWeight = isSupport ? 40 : 25;
-  const visionPerMin = player.visionScore / gameDurationMinutes;
-  const visionTarget = isSupport ? 2.0 : 1.0;
-  const visionScore = clamp(lerp(visionPerMin, 0, visionTarget, visionWeight), visionWeight);
-  macroBreakdown.push({
-    label: "Visión",
-    score: Math.round(visionScore),
-    maxScore: visionWeight,
-    detail: `${visionPerMin.toFixed(1)} vision/min`,
-  });
-
-  // Objective participation (weight: 25 for jungle, 20 for others)
-  const objWeight = isJungle ? 35 : isSupport ? 20 : 25;
-  const objectivePoints =
-    player.dragonKills * 3 +
-    player.baronKills * 5 +
-    player.turretKills * 2;
-  // Also factor in team objectives
-  const teamObjPoints = playerTeam
-    ? playerTeam.objectives.dragon.kills * 2 +
-      playerTeam.objectives.baron.kills * 4 +
-      playerTeam.objectives.tower.kills +
-      playerTeam.objectives.riftHerald.kills * 2
-    : 0;
-  const objTotal = objectivePoints + teamObjPoints * 0.3;
-  const objScore = clamp(lerp(objTotal, 0, 20, objWeight), objWeight);
-  macroBreakdown.push({
-    label: "Objetivos",
-    score: Math.round(objScore),
-    maxScore: objWeight,
-    detail: `${player.dragonKills}D ${player.baronKills}B ${player.turretKills}T`,
-  });
-
-  // Gold efficiency (weight: 20, skip for support)
-  if (!isSupport) {
-    const goldPerMin = player.goldEarned / gameDurationMinutes;
-    const goldScore = clamp(lerp(goldPerMin, 200, 550, 20), 20);
-    macroBreakdown.push({
-      label: "Oro/min",
-      score: Math.round(goldScore),
-      maxScore: 20,
-      detail: `${goldPerMin.toFixed(0)} oro/min`,
-    });
-  } else {
-    // Support: wards placed
-    const wardsScore = clamp(lerp(player.wardsPlaced, 0, 30, 20), 20);
-    macroBreakdown.push({
-      label: "Wards",
-      score: Math.round(wardsScore),
-      maxScore: 20,
-      detail: `${player.wardsPlaced} wards colocados`,
-    });
+  switch (position) {
+    case "UTILITY":
+      microBreakdown = scoreSupportMicro(player, allies, teamKills, gameDurationMinutes);
+      macroBreakdown = scoreSupportMacro(player, allies, playerTeam, gameDurationMinutes);
+      break;
+    case "JUNGLE":
+      microBreakdown = scoreJungleMicro(player, allies, teamKills, gameDurationMinutes);
+      macroBreakdown = scoreJungleMacro(player, allies, playerTeam, gameDurationMinutes);
+      break;
+    default: // TOP, MIDDLE, BOTTOM (laners)
+      microBreakdown = scoreLanerMicro(player, allies, teamKills, gameDurationMinutes);
+      macroBreakdown = scoreLanerMacro(player, allies, playerTeam, gameDurationMinutes);
+      break;
   }
 
-  // Wards killed (weight: 10)
-  const wardsKilledWeight = isSupport ? 15 : 10;
-  const wardsKilledScore = clamp(
-    lerp(player.wardsKilled, 0, isSupport ? 10 : 5, wardsKilledWeight),
-    wardsKilledWeight
-  );
-  macroBreakdown.push({
-    label: "Wards eliminados",
-    score: Math.round(wardsKilledScore),
-    maxScore: wardsKilledWeight,
-    detail: `${player.wardsKilled} wards eliminados`,
-  });
+  const microMax = microBreakdown.reduce((s, b) => s + b.maxScore, 0);
+  const microRaw = microBreakdown.reduce((s, b) => s + b.score, 0);
+  const micro = microMax > 0 ? Math.round((microRaw / microMax) * 100) : 0;
 
-  // Death avoidance (weight: 15, less for support)
-  const deathWeight = isSupport ? 5 : 15;
-  const deathsPerMin = player.deaths / gameDurationMinutes;
-  // Fewer deaths = higher score. 0 deaths/min = perfect, 0.5+/min = 0
-  const deathScore = clamp(
-    lerp(0.5 - deathsPerMin, 0, 0.5, deathWeight),
-    deathWeight
-  );
-  macroBreakdown.push({
-    label: "Supervivencia",
-    score: Math.round(deathScore),
-    maxScore: deathWeight,
-    detail: `${player.deaths} muertes (${deathsPerMin.toFixed(2)}/min)`,
-  });
+  const macroMax = macroBreakdown.reduce((s, b) => s + b.maxScore, 0);
+  const macroRaw = macroBreakdown.reduce((s, b) => s + b.score, 0);
+  const macro = macroMax > 0 ? Math.round((macroRaw / macroMax) * 100) : 0;
 
-  const macroMaxPossible = macroBreakdown.reduce((sum, b) => sum + b.maxScore, 0);
-  const macroRaw = macroBreakdown.reduce((sum, b) => sum + b.score, 0);
-  // Normalize macro to 0-100
-  const macroTotal = macroMaxPossible > 0 ? Math.round((macroRaw / macroMaxPossible) * 100) : 0;
-
-  // Normalize micro to 0-100 (max is always 100)
-  const microNormalized = microTotal;
-
-  // Overall = 50/50 average
-  const overall = Math.round((microNormalized + macroTotal) / 2);
-
+  const overall = Math.round((micro + macro) / 2);
   const { tier, division } = scoreToRank(overall);
 
   return {
-    micro: microNormalized,
-    macro: macroTotal,
+    micro,
+    macro,
     overall,
     rankEquivalent: tier,
     rankDivision: division,
@@ -242,6 +64,301 @@ export function calculatePerformanceScore(
     macroBreakdown,
   };
 }
+
+// ========================
+// LANER (TOP, MID, ADC)
+// ========================
+function scoreLanerMicro(
+  p: MatchParticipant,
+  allies: MatchParticipant[],
+  teamKills: number,
+  mins: number
+): ScoreBreakdown[] {
+  const breakdown: ScoreBreakdown[] = [];
+
+  // KDA (30)
+  const kda = p.deaths === 0 ? p.kills + p.assists : (p.kills + p.assists) / p.deaths;
+  breakdown.push({
+    label: "KDA",
+    score: Math.round(clamp(lerp(kda, 0, 6, 30), 30)),
+    maxScore: 30,
+    detail: `${kda.toFixed(2)} KDA`,
+  });
+
+  // CS/min (30)
+  const cs = (p.totalMinionsKilled + p.neutralMinionsKilled) / mins;
+  breakdown.push({
+    label: "CS/min",
+    score: Math.round(clamp(lerp(cs, 3, 10, 30), 30)),
+    maxScore: 30,
+    detail: `${cs.toFixed(1)} CS/min`,
+  });
+
+  // Damage share (25)
+  const teamDmg = allies.reduce((s, a) => s + a.totalDamageDealtToChampions, 0);
+  const dmgPct = teamDmg > 0 ? (p.totalDamageDealtToChampions / teamDmg) * 100 : 0;
+  breakdown.push({
+    label: "Daño",
+    score: Math.round(clamp(lerp(dmgPct, 8, 35, 25), 25)),
+    maxScore: 25,
+    detail: `${dmgPct.toFixed(0)}% del daño del equipo`,
+  });
+
+  // Multi-kills (15)
+  const multi = p.doubleKills * 2 + p.tripleKills * 5 + p.quadraKills * 10 + p.pentaKills * 15 +
+    (p.firstBloodKill ? 3 : 0) + Math.min(p.largestKillingSpree, 8);
+  breakdown.push({
+    label: "Jugadas",
+    score: Math.round(clamp(lerp(multi, 0, 20, 15), 15)),
+    maxScore: 15,
+    detail: multi > 0
+      ? `${p.doubleKills}x2, ${p.tripleKills}x3, ${p.quadraKills}x4, ${p.pentaKills}x5`
+      : "Sin multi-kills",
+  });
+
+  return breakdown;
+}
+
+function scoreLanerMacro(
+  p: MatchParticipant,
+  allies: MatchParticipant[],
+  team: ReturnType<typeof Array.prototype.find>,
+  mins: number
+): ScoreBreakdown[] {
+  const breakdown: ScoreBreakdown[] = [];
+
+  // Vision (25)
+  const vis = p.visionScore / mins;
+  breakdown.push({
+    label: "Visión",
+    score: Math.round(clamp(lerp(vis, 0, 1.0, 25), 25)),
+    maxScore: 25,
+    detail: `${vis.toFixed(1)} vision/min`,
+  });
+
+  // Gold/min (25)
+  const gpm = p.goldEarned / mins;
+  breakdown.push({
+    label: "Oro/min",
+    score: Math.round(clamp(lerp(gpm, 200, 550, 25), 25)),
+    maxScore: 25,
+    detail: `${gpm.toFixed(0)} oro/min`,
+  });
+
+  // Tower participation (25)
+  const teamTowers = team?.objectives?.tower?.kills || 0;
+  const towerScore = teamTowers > 0
+    ? clamp(lerp(p.turretKills, 0, Math.max(teamTowers * 0.4, 3), 25), 25)
+    : 12;
+  breakdown.push({
+    label: "Torres",
+    score: Math.round(towerScore),
+    maxScore: 25,
+    detail: `${p.turretKills} torres destruidas`,
+  });
+
+  // Supervivencia (25)
+  const dpm = p.deaths / mins;
+  breakdown.push({
+    label: "Supervivencia",
+    score: Math.round(clamp(lerp(0.5 - dpm, 0, 0.5, 25), 25)),
+    maxScore: 25,
+    detail: `${p.deaths} muertes (${dpm.toFixed(2)}/min)`,
+  });
+
+  return breakdown;
+}
+
+// ========================
+// JUNGLE
+// ========================
+function scoreJungleMicro(
+  p: MatchParticipant,
+  allies: MatchParticipant[],
+  teamKills: number,
+  mins: number
+): ScoreBreakdown[] {
+  const breakdown: ScoreBreakdown[] = [];
+
+  // KDA (25)
+  const kda = p.deaths === 0 ? p.kills + p.assists : (p.kills + p.assists) / p.deaths;
+  breakdown.push({
+    label: "KDA",
+    score: Math.round(clamp(lerp(kda, 0, 6, 25), 25)),
+    maxScore: 25,
+    detail: `${kda.toFixed(2)} KDA`,
+  });
+
+  // CS/min - jungle camps matter more (20)
+  const cs = (p.totalMinionsKilled + p.neutralMinionsKilled) / mins;
+  breakdown.push({
+    label: "Farmeo",
+    score: Math.round(clamp(lerp(cs, 3, 8, 20), 20)),
+    maxScore: 20,
+    detail: `${cs.toFixed(1)} CS/min`,
+  });
+
+  // Kill participation - key for junglers (30)
+  const kp = teamKills > 0 ? ((p.kills + p.assists) / teamKills) * 100 : 0;
+  breakdown.push({
+    label: "Particip. Kills",
+    score: Math.round(clamp(lerp(kp, 20, 75, 30), 30)),
+    maxScore: 30,
+    detail: `${kp.toFixed(0)}% participación`,
+  });
+
+  // Damage (25)
+  const teamDmg = allies.reduce((s, a) => s + a.totalDamageDealtToChampions, 0);
+  const dmgPct = teamDmg > 0 ? (p.totalDamageDealtToChampions / teamDmg) * 100 : 0;
+  breakdown.push({
+    label: "Daño",
+    score: Math.round(clamp(lerp(dmgPct, 5, 30, 25), 25)),
+    maxScore: 25,
+    detail: `${dmgPct.toFixed(0)}% del daño del equipo`,
+  });
+
+  return breakdown;
+}
+
+function scoreJungleMacro(
+  p: MatchParticipant,
+  allies: MatchParticipant[],
+  team: ReturnType<typeof Array.prototype.find>,
+  mins: number
+): ScoreBreakdown[] {
+  const breakdown: ScoreBreakdown[] = [];
+
+  // Objetivos - most important for jungle (35)
+  const dragons = team?.objectives?.dragon?.kills || 0;
+  const barons = team?.objectives?.baron?.kills || 0;
+  const heralds = team?.objectives?.riftHerald?.kills || 0;
+  const objPoints = dragons * 3 + barons * 5 + heralds * 3 + p.turretKills * 2;
+  breakdown.push({
+    label: "Objetivos",
+    score: Math.round(clamp(lerp(objPoints, 0, 25, 35), 35)),
+    maxScore: 35,
+    detail: `${dragons}D ${barons}B ${heralds}H ${p.turretKills}T`,
+  });
+
+  // Vision (25)
+  const vis = p.visionScore / mins;
+  breakdown.push({
+    label: "Visión",
+    score: Math.round(clamp(lerp(vis, 0, 1.0, 25), 25)),
+    maxScore: 25,
+    detail: `${vis.toFixed(1)} vision/min`,
+  });
+
+  // Wards eliminados (15)
+  breakdown.push({
+    label: "Control wards",
+    score: Math.round(clamp(lerp(p.wardsKilled, 0, 8, 15), 15)),
+    maxScore: 15,
+    detail: `${p.wardsKilled} wards eliminados`,
+  });
+
+  // Supervivencia (25)
+  const dpm = p.deaths / mins;
+  breakdown.push({
+    label: "Supervivencia",
+    score: Math.round(clamp(lerp(0.5 - dpm, 0, 0.5, 25), 25)),
+    maxScore: 25,
+    detail: `${p.deaths} muertes (${dpm.toFixed(2)}/min)`,
+  });
+
+  return breakdown;
+}
+
+// ========================
+// SUPPORT
+// ========================
+function scoreSupportMicro(
+  p: MatchParticipant,
+  allies: MatchParticipant[],
+  teamKills: number,
+  mins: number
+): ScoreBreakdown[] {
+  const breakdown: ScoreBreakdown[] = [];
+
+  // KDA - deaths matter less, assists matter more (30)
+  const kda = p.deaths === 0 ? p.assists : p.assists / p.deaths;
+  breakdown.push({
+    label: "Asist/Muerte",
+    score: Math.round(clamp(lerp(kda, 0, 8, 30), 30)),
+    maxScore: 30,
+    detail: `${kda.toFixed(2)} asist por muerte`,
+  });
+
+  // Kill participation - key for supports (35)
+  const kp = teamKills > 0 ? ((p.kills + p.assists) / teamKills) * 100 : 0;
+  breakdown.push({
+    label: "Particip. Kills",
+    score: Math.round(clamp(lerp(kp, 25, 80, 35), 35)),
+    maxScore: 35,
+    detail: `${kp.toFixed(0)}% participación`,
+  });
+
+  // Assists total (35)
+  const assistsPerMin = p.assists / mins;
+  breakdown.push({
+    label: "Asistencias",
+    score: Math.round(clamp(lerp(assistsPerMin, 0, 0.6, 35), 35)),
+    maxScore: 35,
+    detail: `${p.assists} asistencias (${assistsPerMin.toFixed(1)}/min)`,
+  });
+
+  return breakdown;
+}
+
+function scoreSupportMacro(
+  p: MatchParticipant,
+  allies: MatchParticipant[],
+  team: ReturnType<typeof Array.prototype.find>,
+  mins: number
+): ScoreBreakdown[] {
+  const breakdown: ScoreBreakdown[] = [];
+
+  // Vision score - most important for support (35)
+  const vis = p.visionScore / mins;
+  breakdown.push({
+    label: "Visión",
+    score: Math.round(clamp(lerp(vis, 0, 2.0, 35), 35)),
+    maxScore: 35,
+    detail: `${vis.toFixed(1)} vision/min`,
+  });
+
+  // Wards placed (25)
+  const wardsPerMin = p.wardsPlaced / mins;
+  breakdown.push({
+    label: "Wards colocados",
+    score: Math.round(clamp(lerp(wardsPerMin, 0, 1.2, 25), 25)),
+    maxScore: 25,
+    detail: `${p.wardsPlaced} wards (${wardsPerMin.toFixed(1)}/min)`,
+  });
+
+  // Wards killed (20)
+  breakdown.push({
+    label: "Wards eliminados",
+    score: Math.round(clamp(lerp(p.wardsKilled, 0, 12, 20), 20)),
+    maxScore: 20,
+    detail: `${p.wardsKilled} wards eliminados`,
+  });
+
+  // Supervivencia (20)
+  const dpm = p.deaths / mins;
+  breakdown.push({
+    label: "Supervivencia",
+    score: Math.round(clamp(lerp(0.4 - dpm, 0, 0.4, 20), 20)),
+    maxScore: 20,
+    detail: `${p.deaths} muertes (${dpm.toFixed(2)}/min)`,
+  });
+
+  return breakdown;
+}
+
+// ========================
+// RANK MAPPING
+// ========================
 
 export function scoreToRank(score: number): { tier: string; division: string } {
   if (score >= 98) return { tier: "CHALLENGER", division: "" };
