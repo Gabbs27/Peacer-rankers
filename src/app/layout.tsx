@@ -16,8 +16,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className={`${inter.className} bg-gray-900 text-white min-h-screen`}>
-        <nav className="border-b border-gray-800 px-6 py-4">
+      <body className={`${inter.className} bg-gray-800 text-white min-h-screen`}>
+        <nav className="border-b border-gray-700 px-6 py-4">
           <a href="/" className="text-xl font-bold text-blue-400 hover:text-blue-300">
             LoL Tracker
           </a>

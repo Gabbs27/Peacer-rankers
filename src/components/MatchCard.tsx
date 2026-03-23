@@ -34,8 +34,8 @@ export default function MatchCard({ match, puuid }: Props) {
     <div
       className={`rounded-lg border ${
         player.win
-          ? "bg-blue-950/30 border-blue-800/50"
-          : "bg-red-950/30 border-red-800/50"
+          ? "bg-blue-900/30 border-blue-700/50"
+          : "bg-red-900/30 border-red-700/50"
       }`}
     >
       {/* Summary row */}
@@ -53,7 +53,7 @@ export default function MatchCard({ match, puuid }: Props) {
         {/* Champion */}
         <div className="flex flex-col items-center gap-1">
           <ChampionIcon championName={player.championName} size={48} />
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-300">
             Lv{player.champLevel}
           </span>
         </div>
@@ -63,7 +63,7 @@ export default function MatchCard({ match, puuid }: Props) {
           <p className="font-bold">
             {player.kills}/{player.deaths}/{player.assists}
           </p>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-300">
             {getKDA(player.kills, player.deaths, player.assists)} KDA
           </p>
         </div>
@@ -73,7 +73,7 @@ export default function MatchCard({ match, puuid }: Props) {
           <p className="text-sm">
             {player.totalMinionsKilled + player.neutralMinionsKilled} CS
           </p>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-300">
             {(
               (player.totalMinionsKilled + player.neutralMinionsKilled) /
               (match.info.gameDuration / 60)
@@ -98,10 +98,10 @@ export default function MatchCard({ match, puuid }: Props) {
           >
             {player.win ? "Victoria" : "Derrota"}
           </p>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-300">
             {getQueueName(match.info.queueId)}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             {formatDuration(match.info.gameDuration)} - {timeSince}
           </p>
         </div>
@@ -109,7 +109,7 @@ export default function MatchCard({ match, puuid }: Props) {
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="border-t border-gray-700 p-4">
+        <div className="border-t border-gray-600 p-4">
           {/* Tips */}
           {tips.length > 0 && (
             <div className="mb-4">
@@ -152,10 +152,10 @@ export default function MatchCard({ match, puuid }: Props) {
                         <span className="flex-1 truncate">
                           {p.riotIdGameName || p.summonerName}
                         </span>
-                        <span className="text-gray-400">
+                        <span className="text-gray-300">
                           {p.kills}/{p.deaths}/{p.assists}
                         </span>
-                        <span className="text-gray-500 text-xs w-16 text-right">
+                        <span className="text-gray-400 text-xs w-16 text-right">
                           {p.totalDamageDealtToChampions.toLocaleString()} dmg
                         </span>
                       </div>

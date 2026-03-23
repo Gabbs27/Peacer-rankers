@@ -25,7 +25,7 @@ export default function SearchBar() {
       <select
         value={region}
         onChange={(e) => setRegion(e.target.value as Region)}
-        className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+        className="bg-gray-700 border border-gray-500 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
       >
         {regions.map(([value, label]) => (
           <option key={value} value={value}>
@@ -38,18 +38,18 @@ export default function SearchBar() {
         placeholder="Nombre (ej: xicebriel)"
         value={gameName}
         onChange={(e) => setGameName(e.target.value)}
-        className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+        className="flex-1 bg-gray-700 border border-gray-500 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
       />
       <input
         type="text"
         placeholder="Tag (ej: LAN)"
         value={tagLine}
         onChange={(e) => setTagLine(e.target.value)}
-        className="w-32 bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+        className="w-32 bg-gray-700 border border-gray-500 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
       />
       <button
         type="submit"
-        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+        className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors"
       >
         Buscar
       </button>
