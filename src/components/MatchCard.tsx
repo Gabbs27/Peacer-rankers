@@ -67,52 +67,55 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
       {/* Summary row */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 p-4 text-left hover:bg-white/5 transition-colors"
+        className="w-full flex items-center gap-2 sm:gap-3 p-3 sm:p-4 text-left hover:bg-white/5 transition-colors overflow-hidden"
       >
         {/* Win/Loss indicator */}
         <div
-          className={`w-1 h-16 rounded-full shrink-0 ${
+          className={`w-1 h-12 sm:h-16 rounded-full shrink-0 ${
             player.win ? "bg-blue-500" : "bg-red-500"
           }`}
         />
 
         {/* Champion + Summoner Spells */}
         <div className="flex items-center gap-1 shrink-0">
-          <div className="flex flex-col items-center gap-1">
-            <ChampionIcon championName={player.championName} size={48} />
-            <span className="text-xs text-gray-300">
+          <div className="flex flex-col items-center">
+            <ChampionIcon championName={player.championName} size={40} className="sm:w-12 sm:h-12" />
+            <span className="text-[10px] text-gray-300">
               Lv{player.champLevel}
             </span>
           </div>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-0.5 hidden sm:flex">
             <img
               src={getSummonerSpellIconUrl(player.summoner1Id)}
               alt="Spell 1"
-              width={20}
-              height={20}
+              width={18}
+              height={18}
               className="rounded"
             />
             <img
               src={getSummonerSpellIconUrl(player.summoner2Id)}
               alt="Spell 2"
-              width={20}
-              height={20}
+              width={18}
+              height={18}
               className="rounded"
             />
           </div>
         </div>
 
-        {/* KDA */}
-        <div className="min-w-[90px]">
-          <p className="font-bold">
+        {/* KDA + CS on mobile */}
+        <div className="min-w-0 shrink">
+          <p className="font-bold text-sm sm:text-base">
             {player.kills}/{player.deaths}/{player.assists}
           </p>
-          <p className="text-sm text-gray-300">
+          <p className="text-xs text-gray-300">
             {getKDA(player.kills, player.deaths, player.assists)} KDA
+          </p>
+          <p className="text-[10px] text-gray-400 sm:hidden">
+            {player.totalMinionsKilled + player.neutralMinionsKilled} CS · {formatDuration(match.info.gameDuration)}
           </p>
         </div>
 
-        {/* CS */}
+        {/* CS - hidden on mobile */}
         <div className="min-w-[70px] hidden sm:block">
           <p className="text-sm">
             {player.totalMinionsKilled + player.neutralMinionsKilled} CS
@@ -126,7 +129,7 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
           </p>
         </div>
 
-        {/* Items + Trinket */}
+        {/* Items + Trinket - hidden on mobile */}
         <div className="hidden md:flex items-center gap-1">
           {items.map((item, i) => (
             <ItemIcon key={i} itemId={item} size={26} />
@@ -136,7 +139,7 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
           </div>
         </div>
 
-        {/* Duration */}
+        {/* Duration - hidden on mobile/tablet */}
         <div className="hidden lg:block text-center min-w-[60px]">
           <p className="text-lg font-mono font-semibold text-gray-200">
             {formatDuration(match.info.gameDuration)}
@@ -146,20 +149,20 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
         {/* Game info */}
         <div className="ml-auto text-right shrink-0">
           <p
-            className={`text-sm font-semibold ${
+            className={`text-xs sm:text-sm font-semibold ${
               player.win ? "text-blue-400" : "text-red-400"
             }`}
           >
             {player.win ? "Victoria" : "Derrota"}
           </p>
-          <p className="text-xs text-gray-300">
-            {getQueueName(match.info.queueId)}{" "}
-            <span className="inline-block px-1.5 py-0.5 rounded bg-gray-600/50 text-gray-300 ml-1">
-              {getMapName(match.info.mapId)}
-            </span>
+          <p className="text-[10px] sm:text-xs text-gray-300 hidden sm:block">
+            {getQueueName(match.info.queueId)}
           </p>
-          <p className="text-xs text-gray-400 lg:hidden">
-            {formatDuration(match.info.gameDuration)} - {timeSince}
+          <p className="text-[10px] sm:text-xs text-gray-400 sm:hidden">
+            {timeSince}
+          </p>
+          <p className="text-xs text-gray-400 hidden sm:block lg:hidden">
+            {formatDuration(match.info.gameDuration)} · {timeSince}
           </p>
           <p className="text-xs text-gray-400 hidden lg:block">
             {timeSince}

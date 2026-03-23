@@ -64,23 +64,23 @@ export default function PlayerStats({
 
   return (
     <div className="flex flex-col sm:flex-row gap-6 items-start">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <img
           src={`https://ddragon.leagueoflegends.com/cdn/16.6.1/img/profileicon/${profileIconId}.png`}
           alt="Profile Icon"
-          width={80}
-          height={80}
-          className="rounded-full border-2 border-blue-500/50"
+          width={64}
+          height={64}
+          className="rounded-full border-2 border-blue-500/50 sm:w-20 sm:h-20"
         />
-        <div>
-          <h1 className="text-3xl font-bold">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-3xl font-bold truncate">
             {gameName}
-            <span className="text-gray-300 text-xl">#{tagLine}</span>
+            <span className="text-gray-300 text-base sm:text-xl">#{tagLine}</span>
           </h1>
-          <p className="text-gray-300">Nivel {summonerLevel}</p>
+          <p className="text-gray-300 text-sm">Nivel {summonerLevel}</p>
         </div>
       </div>
-      <div className="flex gap-4 flex-wrap">
+      <div className="flex gap-3 sm:gap-4 flex-wrap">
         {renderRank(soloQ, "Solo/Duo")}
         {renderRank(flex, "Flex")}
       </div>
