@@ -65,6 +65,9 @@ export interface MatchParticipant {
   role: string;
   totalDamageDealt: number;
   totalDamageTaken: number;
+  magicDamageDealtToChampions: number;
+  physicalDamageDealtToChampions: number;
+  trueDamageDealtToChampions: number;
   totalHeal: number;
   killingSprees: number;
   largestKillingSpree: number;

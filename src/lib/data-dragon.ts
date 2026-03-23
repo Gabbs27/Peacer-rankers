@@ -81,4 +81,13 @@ export function getMobafireSearchUrl(championName: string): string {
   return `https://www.mobafire.com/league-of-legends/champion/${slug}`;
 }
 
+// u.gg champion build URL
+export function getUGGChampionUrl(championName: string): string {
+  const normalized = championName.toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/'/g, "")
+    .replace(/\./g, "");
+  return `https://u.gg/lol/champions/${normalized}/build`;
+}
+
 export { DDRAGON_VERSION };

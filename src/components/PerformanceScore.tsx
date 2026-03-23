@@ -54,27 +54,35 @@ export default function PerformanceScore({ score, actualTier, actualRank }: Prop
 
   const actualLabel = actualTier ? getTierLabel(actualTier) : null;
   const actualRankStr = actualTier && actualRank ? `${actualLabel} ${actualRank}` : null;
+  const actualTierColor = actualTier ? (tierColors[actualTier] || "text-white") : "text-white";
 
   return (
-    <div className={`rounded-lg border border-gray-600 ${tierBg} p-4`}>
+    <div className={`rounded-lg border-2 ${tierColor.replace("text-", "border-")}/30 ${tierBg} p-4`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
         <div className="flex-1">
           <p className="text-xs text-gray-300 uppercase tracking-wide mb-1">
-            Rendimiento
+            Rendimiento en esta partida
           </p>
-          <p className={`text-2xl font-bold ${tierColor}`}>
+          <p className={`text-2xl font-bold ${tierColor} drop-shadow-sm`}>
             {rankLabel}{divisionStr}
           </p>
-          {actualRankStr && (
-            <p className="text-sm text-gray-300 mt-1">
+          {actualRankStr ? (
+            <p className="text-sm text-gray-200 mt-1">
               Jugaste a nivel{" "}
               <span className={`font-semibold ${tierColor}`}>
                 {rankLabel}{divisionStr}
               </span>
               {" "}en{" "}
-              <span className={`font-semibold ${tierColors[actualTier!] || "text-white"}`}>
+              <span className={`font-semibold ${actualTierColor}`}>
                 {actualRankStr}
+              </span>
+            </p>
+          ) : (
+            <p className="text-sm text-gray-200 mt-1">
+              Jugaste a nivel{" "}
+              <span className={`font-semibold ${tierColor}`}>
+                {rankLabel}{divisionStr}
               </span>
             </p>
           )}
