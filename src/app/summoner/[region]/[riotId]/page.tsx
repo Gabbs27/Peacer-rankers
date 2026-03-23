@@ -69,6 +69,7 @@ export default async function SummonerPage({ params }: PageProps) {
                 key={match.metadata.matchId}
                 match={match}
                 puuid={account.puuid}
+                ranked={ranked}
               />
             ))}
           </div>
