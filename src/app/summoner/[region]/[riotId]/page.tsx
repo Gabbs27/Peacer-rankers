@@ -1,33 +1,16 @@
 import { Region } from "@/lib/types";
+import {
+  getAccountByRiotId,
+  getSummonerByPuuid,
+  getLeagueEntries,
+  getMatchIds,
+  getMatches,
+} from "@/lib/riot-api";
 import PlayerStats from "@/components/PlayerStats";
 import MatchCard from "@/components/MatchCard";
 
 interface PageProps {
   params: Promise<{ region: string; riotId: string }>;
-}
-
-async function fetchSummoner(gameName: string, tagLine: string, region: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const res = await fetch(
-    `${baseUrl}/api/summoner?gameName=${encodeURIComponent(gameName)}&tagLine=${encodeURIComponent(tagLine)}&region=${region}`,
-    { cache: "no-store" }
-  );
-  if (!res.ok) {
-    throw new Error(`Failed to fetch summoner: ${res.statusText}`);
-  }
-  return res.json();
-}
-
-async function fetchMatches(puuid: string, region: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const res = await fetch(
-    `${baseUrl}/api/matches?puuid=${puuid}&region=${region}&count=10`,
-    { cache: "no-store" }
-  );
-  if (!res.ok) {
-    throw new Error(`Failed to fetch matches: ${res.statusText}`);
-  }
-  return res.json();
 }
 
 export default async function SummonerPage({ params }: PageProps) {
@@ -38,18 +21,17 @@ export default async function SummonerPage({ params }: PageProps) {
     return (
       <div className="text-center py-20">
         <h1 className="text-2xl text-red-400">Formato inválido</h1>
-        <p className="text-gray-400 mt-2">Usa el formato: Nombre-Tag</p>
+        <p className="text-gray-300 mt-2">Usa el formato: Nombre-Tag</p>
       </div>
     );
   }
 
   try {
-    const { account, summoner, ranked } = await fetchSummoner(
-      gameName,
-      tagLine,
-      region
-    );
-    const { matches } = await fetchMatches(account.puuid, region);
+    const account = await getAccountByRiotId(gameName, tagLine, region as Region);
+    const summoner = await getSummonerByPuuid(account.puuid, region as Region);
+    const ranked = await getLeagueEntries(account.puuid, region as Region);
+    const matchIds = await getMatchIds(account.puuid, region as Region, 10);
+    const matches = await getMatches(matchIds, region as Region);
 
     return (
       <div className="space-y-8">
@@ -64,7 +46,7 @@ export default async function SummonerPage({ params }: PageProps) {
         <div>
           <h2 className="text-xl font-bold mb-4">Historial de Partidas</h2>
           <div className="space-y-3">
-            {matches.map((match: import("@/lib/types").MatchData) => (
+            {matches.map((match) => (
               <MatchCard
                 key={match.metadata.matchId}
                 match={match}
@@ -74,7 +56,7 @@ export default async function SummonerPage({ params }: PageProps) {
             ))}
           </div>
           {matches.length === 0 && (
-            <p className="text-gray-500 text-center py-8">
+            <p className="text-gray-400 text-center py-8">
               No se encontraron partidas recientes
             </p>
           )}
@@ -85,7 +67,7 @@ export default async function SummonerPage({ params }: PageProps) {
     return (
       <div className="text-center py-20">
         <h1 className="text-2xl text-red-400">Error</h1>
-        <p className="text-gray-400 mt-2">
+        <p className="text-gray-300 mt-2">
           {error instanceof Error
             ? error.message
             : "No se pudo cargar el perfil"}
