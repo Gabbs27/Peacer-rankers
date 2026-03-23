@@ -65,11 +65,11 @@ export async function getSummonerByPuuid(
 }
 
 export async function getLeagueEntries(
-  summonerId: string,
+  puuid: string,
   region: Region
 ): Promise<LeagueEntry[]> {
   return fetchRiot<LeagueEntry[]>(
-    `${platformUrl(region)}/lol/league/v4/entries/by-summoner/${summonerId}`
+    `${platformUrl(region)}/lol/league/v4/entries/by-puuid/${puuid}`
   );
 }
 
