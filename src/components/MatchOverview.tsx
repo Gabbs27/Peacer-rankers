@@ -2,12 +2,27 @@
 
 import { useState } from "react";
 import { MatchData } from "@/lib/types";
-import { getChampionIconUrl } from "@/lib/data-dragon";
+import { getChampionIconUrl, formatDuration } from "@/lib/data-dragon";
 import { calculatePerformanceScore } from "@/lib/scoring";
+
+const REMAKE_THRESHOLD = 300; // 5 minutes in seconds
 
 interface Props {
   matches: MatchData[];
   puuid: string;
+}
+
+interface MatchDetail {
+  win: boolean;
+  kills: number;
+  deaths: number;
+  assists: number;
+  cs: number;
+  duration: number; // seconds
+  damage: number;
+  gold: number;
+  score: number;
+  isRemake: boolean;
 }
 
 interface ChampionStats {
@@ -24,6 +39,7 @@ interface ChampionStats {
   totalVision: number;
   avgScore: number;
   positions: string[];
+  matchDetails: MatchDetail[];
 }
 
 interface FeedbackItem {
@@ -40,17 +56,23 @@ interface CategorizedFeedback {
 export default function MatchOverview({ matches, puuid }: Props) {
   const [showChampions, setShowChampions] = useState(true);
   const [showFeedback, setShowFeedback] = useState(true);
+  const [expandedChamp, setExpandedChamp] = useState<string | null>(null);
 
-  // Calculate general stats
-  const playerMatches = matches.map((m) => {
+  // Calculate general stats - include all matches for display but flag remakes
+  const allPlayerMatches = matches.map((m) => {
     const player = m.info.participants.find((p) => p.puuid === puuid);
-    const score = player ? calculatePerformanceScore(player, m.info) : null;
+    const isRemake = m.info.gameDuration < REMAKE_THRESHOLD;
+    const score = player && !isRemake ? calculatePerformanceScore(player, m.info) : null;
     const allies = player ? m.info.participants.filter((p) => p.teamId === player.teamId) : [];
     const teamKills = allies.reduce((s, p) => s + p.kills, 0);
-    return { match: m, player, score, teamKills };
+    return { match: m, player, score, teamKills, isRemake };
   }).filter((m) => m.player != null);
 
-  if (playerMatches.length === 0) return null;
+  // Filter out remakes for stats (but keep them in match count for display)
+  const playerMatches = allPlayerMatches.filter((m) => !m.isRemake);
+  const remakeCount = allPlayerMatches.length - playerMatches.length;
+
+  if (allPlayerMatches.length === 0) return null;
 
   const totalGames = playerMatches.length;
   const wins = playerMatches.filter((m) => m.player!.win).length;
@@ -122,28 +144,38 @@ export default function MatchOverview({ matches, puuid }: Props) {
     currentStreak, streakType, totalGames,
   });
 
-  // Champion grouped stats
+  // Champion grouped stats (uses ALL matches including remakes for game count, but excludes remakes from stats)
   const champStats = new Map<string, ChampionStats>();
-  playerMatches.forEach(({ player: p, match: m, score }) => {
+  allPlayerMatches.forEach(({ player: p, match: m, score, isRemake }) => {
     const name = p!.championName;
     const existing = champStats.get(name) || {
       championName: name, games: 0, wins: 0, kills: 0, deaths: 0, assists: 0,
       cs: 0, totalMinutes: 0, totalDamage: 0, totalGold: 0, totalVision: 0, avgScore: 0,
-      positions: [],
+      positions: [], matchDetails: [],
     };
-    existing.games++;
-    if (p!.win) existing.wins++;
-    existing.kills += p!.kills;
-    existing.deaths += p!.deaths;
-    existing.assists += p!.assists;
-    existing.cs += p!.totalMinionsKilled + p!.neutralMinionsKilled;
-    existing.totalMinutes += m.info.gameDuration / 60;
-    existing.totalDamage += p!.totalDamageDealtToChampions;
-    existing.totalGold += p!.goldEarned;
-    existing.totalVision += p!.visionScore;
-    existing.avgScore += score?.overall || 0;
-    if (p!.individualPosition && p!.individualPosition !== "Invalid") {
-      existing.positions.push(p!.individualPosition);
+
+    const cs = p!.totalMinionsKilled + p!.neutralMinionsKilled;
+    existing.matchDetails.push({
+      win: p!.win, kills: p!.kills, deaths: p!.deaths, assists: p!.assists,
+      cs, duration: m.info.gameDuration, damage: p!.totalDamageDealtToChampions,
+      gold: p!.goldEarned, score: score?.overall || 0, isRemake,
+    });
+
+    if (!isRemake) {
+      existing.games++;
+      if (p!.win) existing.wins++;
+      existing.kills += p!.kills;
+      existing.deaths += p!.deaths;
+      existing.assists += p!.assists;
+      existing.cs += cs;
+      existing.totalMinutes += m.info.gameDuration / 60;
+      existing.totalDamage += p!.totalDamageDealtToChampions;
+      existing.totalGold += p!.goldEarned;
+      existing.totalVision += p!.visionScore;
+      existing.avgScore += score?.overall || 0;
+      if (p!.individualPosition && p!.individualPosition !== "Invalid") {
+        existing.positions.push(p!.individualPosition);
+      }
     }
     champStats.set(name, existing);
   });
@@ -157,6 +189,11 @@ export default function MatchOverview({ matches, puuid }: Props) {
       <div className="rounded-xl border border-gray-600 bg-gradient-to-br from-gray-800/80 to-gray-900/80 p-5">
         <h3 className="text-lg font-bold text-gray-100 mb-4">
           Overview — Últimas {totalGames} partidas
+          {remakeCount > 0 && (
+            <span className="text-xs text-gray-500 font-normal ml-2">
+              ({remakeCount} remake{remakeCount > 1 ? "s" : ""} excluido{remakeCount > 1 ? "s" : ""})
+            </span>
+          )}
         </h3>
 
         {/* Win/Loss Bar */}
@@ -299,6 +336,7 @@ export default function MatchOverview({ matches, puuid }: Props) {
         {showChampions && (
           <ul className="mt-4 space-y-2" role="list">
             {champList.map((champ) => {
+              if (champ.games === 0) return null; // All remakes
               const wr = Math.round((champ.wins / champ.games) * 100);
               const kda = champ.deaths === 0
                 ? "Perfect"
@@ -306,56 +344,122 @@ export default function MatchOverview({ matches, puuid }: Props) {
               const csMin = (champ.cs / champ.totalMinutes).toFixed(1);
               const avgDmg = (champ.totalDamage / champ.games / 1000).toFixed(1);
               const champScore = Math.round(champ.avgScore / champ.games);
+              const isExpanded = expandedChamp === champ.championName;
+              const remakes = champ.matchDetails.filter((d) => d.isRemake).length;
 
               return (
-                <li
-                  key={champ.championName}
-                  className="flex items-center gap-3 bg-gray-700/40 rounded-lg p-3 hover:bg-gray-700/60 transition-colors"
-                >
-                  <img
-                    src={getChampionIconUrl(champ.championName)}
-                    alt={champ.championName}
-                    width={44}
-                    height={44}
-                    className="rounded-full border-2 border-gray-600"
-                  />
+                <li key={champ.championName}>
+                  <button
+                    onClick={() => setExpandedChamp(isExpanded ? null : champ.championName)}
+                    aria-expanded={isExpanded}
+                    className="w-full flex items-center gap-3 bg-gray-700/40 rounded-lg p-3 hover:bg-gray-700/60 transition-colors text-left"
+                  >
+                    <img
+                      src={getChampionIconUrl(champ.championName)}
+                      alt={champ.championName}
+                      width={44}
+                      height={44}
+                      className="rounded-full border-2 border-gray-600"
+                    />
 
-                  <div className="min-w-[100px]">
-                    <p className="text-sm font-semibold text-gray-100">{champ.championName}</p>
-                    <p className="text-xs text-gray-400">
-                      {champ.games} {champ.games === 1 ? "partida" : "partidas"}
-                    </p>
-                  </div>
-
-                  <div className="min-w-[80px]">
-                    <p className={`text-sm font-bold ${wr >= 50 ? "text-blue-400" : "text-red-400"}`}>
-                      {wr}% WR
-                    </p>
-                    <div className="h-1.5 bg-red-500/40 rounded-full overflow-hidden mt-0.5">
-                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${wr}%` }} />
+                    <div className="min-w-[100px]">
+                      <p className="text-sm font-semibold text-gray-100">{champ.championName}</p>
+                      <p className="text-xs text-gray-400">
+                        {champ.games} {champ.games === 1 ? "partida" : "partidas"}
+                        {remakes > 0 && <span className="text-gray-500"> + {remakes} remake</span>}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500">{champ.wins}V {champ.games - champ.wins}D</p>
-                  </div>
 
-                  <div className="min-w-[60px] text-center hidden sm:block">
-                    <p className="text-sm font-medium text-gray-200">{kda}</p>
-                    <p className="text-xs text-gray-500">KDA</p>
-                  </div>
+                    <div className="min-w-[80px]">
+                      <p className={`text-sm font-bold ${wr >= 50 ? "text-blue-400" : "text-red-400"}`}>
+                        {wr}% WR
+                      </p>
+                      <div className="h-1.5 bg-red-500/40 rounded-full overflow-hidden mt-0.5">
+                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${wr}%` }} />
+                      </div>
+                      <p className="text-xs text-gray-500">{champ.wins}V {champ.games - champ.wins}D</p>
+                    </div>
 
-                  <div className="min-w-[50px] text-center hidden sm:block">
-                    <p className="text-sm font-medium text-gray-200">{csMin}</p>
-                    <p className="text-xs text-gray-500">CS/min</p>
-                  </div>
+                    <div className="min-w-[60px] text-center hidden sm:block">
+                      <p className="text-sm font-medium text-gray-200">{kda}</p>
+                      <p className="text-xs text-gray-500">KDA</p>
+                    </div>
 
-                  <div className="min-w-[50px] text-center hidden md:block">
-                    <p className="text-sm font-medium text-gray-200">{avgDmg}k</p>
-                    <p className="text-xs text-gray-500">Daño</p>
-                  </div>
+                    <div className="min-w-[50px] text-center hidden sm:block">
+                      <p className="text-sm font-medium text-gray-200">{csMin}</p>
+                      <p className="text-xs text-gray-500">CS/min</p>
+                    </div>
 
-                  <div className="min-w-[40px] text-center hidden md:block">
-                    <p className="text-sm font-bold text-orange-400">{champScore}</p>
-                    <p className="text-xs text-gray-500">Score</p>
-                  </div>
+                    <div className="min-w-[50px] text-center hidden md:block">
+                      <p className="text-sm font-medium text-gray-200">{avgDmg}k</p>
+                      <p className="text-xs text-gray-500">Daño</p>
+                    </div>
+
+                    <div className="min-w-[40px] text-center hidden md:block">
+                      <p className="text-sm font-bold text-orange-400">{champScore}</p>
+                      <p className="text-xs text-gray-500">Score</p>
+                    </div>
+
+                    <span className="text-gray-500 text-xs ml-auto shrink-0">
+                      {isExpanded ? "▲" : "▼"}
+                    </span>
+                  </button>
+
+                  {/* Expanded: individual match breakdown */}
+                  {isExpanded && (
+                    <div className="mt-1 ml-4 sm:ml-14 space-y-1.5 pb-2">
+                      <div className="grid grid-cols-7 sm:grid-cols-8 gap-1 text-xs text-gray-500 font-medium px-3 pt-2">
+                        <span>Result</span>
+                        <span>KDA</span>
+                        <span className="hidden sm:block">CS</span>
+                        <span>Daño</span>
+                        <span>Oro</span>
+                        <span>Dur.</span>
+                        <span>Score</span>
+                      </div>
+                      {champ.matchDetails.map((detail, i) => (
+                        <div
+                          key={i}
+                          className={`grid grid-cols-7 sm:grid-cols-8 gap-1 text-xs px-3 py-1.5 rounded ${
+                            detail.isRemake
+                              ? "bg-gray-700/30 text-gray-500 italic"
+                              : detail.win
+                              ? "bg-blue-900/20 text-gray-200"
+                              : "bg-red-900/20 text-gray-200"
+                          }`}
+                        >
+                          <span className={`font-semibold ${detail.isRemake ? "text-gray-500" : detail.win ? "text-blue-400" : "text-red-400"}`}>
+                            {detail.isRemake ? "Remake" : detail.win ? "Victoria" : "Derrota"}
+                          </span>
+                          <span>{detail.kills}/{detail.deaths}/{detail.assists}</span>
+                          <span className="hidden sm:block">{detail.cs}</span>
+                          <span>{(detail.damage / 1000).toFixed(1)}k</span>
+                          <span>{(detail.gold / 1000).toFixed(1)}k</span>
+                          <span>{formatDuration(detail.duration)}</span>
+                          <span className={detail.isRemake ? "text-gray-500" : "text-orange-400 font-semibold"}>
+                            {detail.isRemake ? "—" : detail.score}
+                          </span>
+                        </div>
+                      ))}
+
+                      {/* Best/Worst game summary */}
+                      {champ.matchDetails.filter((d) => !d.isRemake).length >= 2 && (() => {
+                        const validGames = champ.matchDetails.filter((d) => !d.isRemake);
+                        const best = validGames.reduce((a, b) => a.score > b.score ? a : b);
+                        const worst = validGames.reduce((a, b) => a.score < b.score ? a : b);
+                        return (
+                          <div className="flex gap-4 pt-2 text-xs">
+                            <span className="text-green-400">
+                              Mejor: {best.kills}/{best.deaths}/{best.assists} ({best.score} pts)
+                            </span>
+                            <span className="text-red-400">
+                              Peor: {worst.kills}/{worst.deaths}/{worst.assists} ({worst.score} pts)
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </li>
               );
             })}
