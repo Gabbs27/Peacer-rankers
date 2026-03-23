@@ -304,6 +304,9 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
                             championName={p.championName}
                             size={28}
                           />
+                          <span className="text-xs text-gray-400 w-8 shrink-0 text-center" title={p.individualPosition}>
+                            {getRoleLabel(p.individualPosition)}
+                          </span>
                           <span className="flex-1 truncate min-w-0">
                             {p.riotIdGameName || p.summonerName}
                           </span>
@@ -382,6 +385,17 @@ function ObjectiveStat({
       </p>
     </div>
   );
+}
+
+function getRoleLabel(position: string): string {
+  const roles: Record<string, string> = {
+    TOP: "TOP",
+    JUNGLE: "JG",
+    MIDDLE: "MID",
+    BOTTOM: "ADC",
+    UTILITY: "SUP",
+  };
+  return roles[position] || "?";
 }
 
 function getTimeSince(timestamp: number): string {

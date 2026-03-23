@@ -323,14 +323,48 @@ export function getDefensiveRecommendations(
       : `Adapta tus defensivos según la mayor amenaza de la partida.`;
   }
 
-  // Safety filter: never recommend AP items to AD champs and vice versa
-  const apOnlyItems = new Set([3157, 3102, 3135, 6653]); // Zhonya, Banshee, Void Staff, Liandry
-  const adOnlyItems = new Set([3156, 3091, 6333, 3026, 3071, 3153]); // Maw, Wit's, DD, GA, BC, BOTRK
+  // Safety filters
+  const apCarryItems = new Set([3157, 3102, 3135, 6653]); // Zhonya, Banshee, Void Staff, Liandry
+  const adCarryItems = new Set([3156, 3091, 6333, 3026, 3071, 3153]); // Maw, Wit's, DD, GA, BC, BOTRK
+  // Never recommend AP carry items to AD champs
   if (isAD) {
-    items = items.filter((i) => !apOnlyItems.has(i.itemId));
+    items = items.filter((i) => !apCarryItems.has(i.itemId));
   }
+  // Never recommend AD carry items to AP champs
   if (isAP) {
-    items = items.filter((i) => !adOnlyItems.has(i.itemId));
+    items = items.filter((i) => !adCarryItems.has(i.itemId));
+  }
+  // Supports should not get carry items - only support/tank items
+  if (isSupport) {
+    const carryItems = new Set([...apCarryItems, ...adCarryItems]);
+    items = items.filter((i) => !carryItems.has(i.itemId));
+  }
+
+  // If support has no items after filtering, add support-specific defaults
+  if (isSupport && items.length === 0) {
+    if (analysis.isAdHeavy) {
+      items.push({ name: "Frozen Heart", itemId: 3110, reason: "Reduce velocidad de ataque enemiga, clave vs ADCs" });
+      items.push({ name: "Plated Steelcaps", itemId: 3047, reason: "Armadura + reducción de autos vs comp AD" });
+      items.push({ name: "Locket of the Iron Solari", itemId: 3190, reason: "Escudo para tu equipo, bueno vs burst AD" });
+    } else if (analysis.isApHeavy) {
+      items.push({ name: "Mikael's Blessing", itemId: 3222, reason: "Limpia CC + RM, clave vs comp AP" });
+      items.push({ name: "Mercury's Treads", itemId: 3111, reason: "RM + tenacidad vs comp AP" });
+      items.push({ name: "Spirit Visage", itemId: 3065, reason: "RM + curación aumentada" });
+    } else {
+      items.push({ name: "Locket of the Iron Solari", itemId: 3190, reason: "Escudo para tu equipo en peleas" });
+      items.push({ name: "Knight's Vow", itemId: 3109, reason: "Protege a tu carry, redirige daño" });
+    }
+  }
+
+  // Update reasoning for supports
+  if (isSupport) {
+    if (analysis.isAdHeavy) {
+      reasoning = `Como soporte, Frozen Heart reduce el DPS enemigo. Locket protege a tu equipo del burst.`;
+    } else if (analysis.isApHeavy) {
+      reasoning = `Como soporte, Mikael's es clave para limpiar CC. Mercury's Treads te dan tenacidad.`;
+    } else {
+      reasoning = `Como soporte, prioriza items de utilidad. Locket y Knight's Vow protegen a tus carries.`;
+    }
   }
 
   return { title, items: items.slice(0, 4), reasoning };
