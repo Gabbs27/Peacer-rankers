@@ -12,10 +12,12 @@ import {
 } from "@/lib/data-dragon";
 import { generateTips, generateTeamAnalysis } from "@/lib/tips";
 import { calculatePerformanceScore } from "@/lib/scoring";
+import { analyzeEnemyTeam, getDefensiveRecommendations, analyzeBuildEfficiency } from "@/lib/builds";
 import ChampionIcon from "./ChampionIcon";
 import ItemIcon from "./ItemIcon";
 import TipsBadge from "./TipsBadge";
 import PerformanceScoreComponent from "./PerformanceScore";
+import BuildRecommendationComponent from "./BuildRecommendation";
 
 interface Props {
   match: MatchData;
@@ -33,6 +35,9 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
   const teamTips = generateTeamAnalysis(player.teamId, match.info);
   const perfScore = calculatePerformanceScore(player, match.info);
   const soloQ = ranked?.find((r) => r.queueType === "RANKED_SOLO_5x5");
+  const enemyAnalysis = analyzeEnemyTeam(match.info, player.teamId);
+  const buildRec = getDefensiveRecommendations(enemyAnalysis, player.individualPosition);
+  const buildVerdict = analyzeBuildEfficiency(player, enemyAnalysis);
   const timeSince = getTimeSince(match.info.gameCreation);
   const items = [
     player.item0,
@@ -198,6 +203,13 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
               Ver Guías de {player.championName} en Mobafire
             </a>
           </div>
+
+          {/* Build Recommendation */}
+          <BuildRecommendationComponent
+            recommendation={buildRec}
+            analysis={enemyAnalysis}
+            buildVerdict={buildVerdict}
+          />
 
           {/* Objectives comparison */}
           {playerTeam && enemyTeam && (
