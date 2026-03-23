@@ -1,0 +1,58 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Region, REGION_LABELS } from "@/lib/types";
+
+const regions = Object.entries(REGION_LABELS) as [Region, string][];
+
+export default function SearchBar() {
+  const [gameName, setGameName] = useState("");
+  const [tagLine, setTagLine] = useState("");
+  const [region, setRegion] = useState<Region>("la1");
+  const router = useRouter();
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!gameName.trim() || !tagLine.trim()) return;
+    router.push(
+      `/summoner/${region}/${encodeURIComponent(gameName)}-${encodeURIComponent(tagLine)}`
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 w-full max-w-2xl">
+      <select
+        value={region}
+        onChange={(e) => setRegion(e.target.value as Region)}
+        className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+      >
+        {regions.map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
+      <input
+        type="text"
+        placeholder="Nombre (ej: xicebriel)"
+        value={gameName}
+        onChange={(e) => setGameName(e.target.value)}
+        className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+      />
+      <input
+        type="text"
+        placeholder="Tag (ej: LAN)"
+        value={tagLine}
+        onChange={(e) => setTagLine(e.target.value)}
+        className="w-32 bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+      />
+      <button
+        type="submit"
+        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+      >
+        Buscar
+      </button>
+    </form>
+  );
+}
