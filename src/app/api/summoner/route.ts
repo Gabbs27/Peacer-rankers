@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   try {
     const account = await getAccountByRiotId(gameName, tagLine, region);
     const summoner = await getSummonerByPuuid(account.puuid, region);
-    const ranked = await getLeagueEntries(summoner.id, region);
+    const ranked = await getLeagueEntries(account.puuid, region);
 
     return NextResponse.json({ account, summoner, ranked });
   } catch (error) {
