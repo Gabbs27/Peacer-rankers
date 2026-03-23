@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MatchData } from "@/lib/types";
+import { MatchData, LeagueEntry } from "@/lib/types";
 import {
   formatDuration,
   getKDA,
@@ -11,16 +11,19 @@ import {
   getMobafireSearchUrl,
 } from "@/lib/data-dragon";
 import { generateTips, generateTeamAnalysis } from "@/lib/tips";
+import { calculatePerformanceScore } from "@/lib/scoring";
 import ChampionIcon from "./ChampionIcon";
 import ItemIcon from "./ItemIcon";
 import TipsBadge from "./TipsBadge";
+import PerformanceScoreComponent from "./PerformanceScore";
 
 interface Props {
   match: MatchData;
   puuid: string;
+  ranked?: LeagueEntry[];
 }
 
-export default function MatchCard({ match, puuid }: Props) {
+export default function MatchCard({ match, puuid, ranked }: Props) {
   const [expanded, setExpanded] = useState(false);
   const player = match.info.participants.find((p) => p.puuid === puuid);
 
@@ -28,6 +31,8 @@ export default function MatchCard({ match, puuid }: Props) {
 
   const tips = generateTips(player, match.info);
   const teamTips = generateTeamAnalysis(player.teamId, match.info);
+  const perfScore = calculatePerformanceScore(player, match.info);
+  const soloQ = ranked?.find((r) => r.queueType === "RANKED_SOLO_5x5");
   const timeSince = getTimeSince(match.info.gameCreation);
   const items = [
     player.item0,
@@ -160,6 +165,13 @@ export default function MatchCard({ match, puuid }: Props) {
       {/* Expanded detail */}
       {expanded && (
         <div className="border-t border-gray-600 p-4 space-y-4">
+          {/* Performance Score */}
+          <PerformanceScoreComponent
+            score={perfScore}
+            actualTier={soloQ?.tier}
+            actualRank={soloQ?.rank}
+          />
+
           {/* Personal Tips */}
           {tips.length > 0 && (
             <div>

@@ -193,6 +193,24 @@ export interface Tip {
   value: number;
 }
 
+// Performance scoring
+export interface PerformanceScore {
+  micro: number;
+  macro: number;
+  overall: number;
+  rankEquivalent: string;
+  rankDivision: string;
+  microBreakdown: ScoreBreakdown[];
+  macroBreakdown: ScoreBreakdown[];
+}
+
+export interface ScoreBreakdown {
+  label: string;
+  score: number;
+  maxScore: number;
+  detail: string;
+}
+
 // Summoner profile (aggregated)
 export interface SummonerProfile {
   account: RiotAccount;
