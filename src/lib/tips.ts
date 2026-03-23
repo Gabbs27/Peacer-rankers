@@ -155,5 +155,186 @@ export function generateTips(
     }
   }
 
+  // Game duration analysis
+  const gameDurationMin = Math.floor(matchInfo.gameDuration / 60);
+  const gameDurationSec = matchInfo.gameDuration % 60;
+  const durationStr = `${gameDurationMin}:${gameDurationSec.toString().padStart(2, "0")}`;
+
+  if (gameDurationMinutes < 20) {
+    if (player.win) {
+      tips.push({
+        category: "duration",
+        level: "good",
+        message: `Victoria rápida en ${durationStr}. Buen ritmo de juego temprano`,
+        value: gameDurationMinutes,
+      });
+    } else {
+      tips.push({
+        category: "duration",
+        level: "bad",
+        message: `Derrota rápida en ${durationStr}. Mejora tu early game y objetivos tempranos`,
+        value: gameDurationMinutes,
+      });
+    }
+  } else if (gameDurationMinutes > 35) {
+    if (player.win) {
+      tips.push({
+        category: "duration",
+        level: "ok",
+        message: `Partida larga (${durationStr}) pero conseguiste la victoria. Buena paciencia`,
+        value: gameDurationMinutes,
+      });
+    } else {
+      tips.push({
+        category: "duration",
+        level: "bad",
+        message: `Partida larga (${durationStr}) terminada en derrota. Cierra partidas antes aprovechando ventajas`,
+        value: gameDurationMinutes,
+      });
+    }
+  }
+
+  // Gold efficiency
+  if (position !== "UTILITY") {
+    const goldPerMin = player.goldEarned / gameDurationMinutes;
+    if (goldPerMin >= 450) {
+      tips.push({
+        category: "gold",
+        level: "good",
+        message: `Gran generación de oro: ${goldPerMin.toFixed(0)} oro/min`,
+        value: goldPerMin,
+      });
+    } else if (goldPerMin >= 350) {
+      tips.push({
+        category: "gold",
+        level: "ok",
+        message: `Oro decente: ${goldPerMin.toFixed(0)} oro/min. Mejora tu farmeo y participación`,
+        value: goldPerMin,
+      });
+    } else {
+      tips.push({
+        category: "gold",
+        level: "bad",
+        message: `Oro bajo: ${goldPerMin.toFixed(0)} oro/min. Necesitas más CS y participación en objetivos`,
+        value: goldPerMin,
+      });
+    }
+  }
+
+  return tips;
+}
+
+export function generateTeamAnalysis(
+  playerTeamId: number,
+  matchInfo: MatchInfo
+): Tip[] {
+  const tips: Tip[] = [];
+
+  const playerTeam = matchInfo.teams.find((t) => t.teamId === playerTeamId);
+  const enemyTeam = matchInfo.teams.find((t) => t.teamId !== playerTeamId);
+
+  if (!playerTeam || !enemyTeam) return tips;
+
+  const allies = matchInfo.participants.filter((p) => p.teamId === playerTeamId);
+  const enemies = matchInfo.participants.filter((p) => p.teamId !== playerTeamId);
+
+  // Dragon comparison
+  const allyDragons = playerTeam.objectives.dragon.kills;
+  const enemyDragons = enemyTeam.objectives.dragon.kills;
+  if (allyDragons > enemyDragons) {
+    tips.push({
+      category: "teamAnalysis",
+      level: "good",
+      message: `Tu equipo dominó los dragones: ${allyDragons} vs ${enemyDragons}`,
+      value: allyDragons,
+    });
+  } else if (allyDragons < enemyDragons) {
+    tips.push({
+      category: "teamAnalysis",
+      level: "bad",
+      message: `El rival controló más dragones: ${enemyDragons} vs ${allyDragons}. Prioriza dragones`,
+      value: allyDragons,
+    });
+  }
+
+  // Baron comparison
+  const allyBarons = playerTeam.objectives.baron.kills;
+  const enemyBarons = enemyTeam.objectives.baron.kills;
+  if (allyBarons > 0 || enemyBarons > 0) {
+    if (allyBarons > enemyBarons) {
+      tips.push({
+        category: "teamAnalysis",
+        level: "good",
+        message: `Tu equipo aseguró ${allyBarons} Baron(es) vs ${enemyBarons} del rival`,
+        value: allyBarons,
+      });
+    } else if (allyBarons < enemyBarons) {
+      tips.push({
+        category: "teamAnalysis",
+        level: "bad",
+        message: `El rival consiguió ${enemyBarons} Baron(es) vs ${allyBarons}. Controla la visión en Baron`,
+        value: allyBarons,
+      });
+    }
+  }
+
+  // Tower comparison
+  const allyTowers = playerTeam.objectives.tower.kills;
+  const enemyTowers = enemyTeam.objectives.tower.kills;
+  if (allyTowers !== enemyTowers) {
+    tips.push({
+      category: "teamAnalysis",
+      level: allyTowers > enemyTowers ? "good" : "bad",
+      message: allyTowers > enemyTowers
+        ? `Tu equipo destruyó más torres: ${allyTowers} vs ${enemyTowers}`
+        : `El rival destruyó más torres: ${enemyTowers} vs ${allyTowers}. Presiona carriles con ventaja`,
+      value: allyTowers,
+    });
+  }
+
+  // Vision comparison (team totals)
+  const allyVision = allies.reduce((sum, p) => sum + p.visionScore, 0);
+  const enemyVision = enemies.reduce((sum, p) => sum + p.visionScore, 0);
+  const visionDiff = Math.abs(allyVision - enemyVision);
+  if (visionDiff > 10) {
+    tips.push({
+      category: "teamAnalysis",
+      level: allyVision > enemyVision ? "good" : "bad",
+      message: allyVision > enemyVision
+        ? `Tu equipo tuvo mejor visión: ${allyVision} vs ${enemyVision}`
+        : `El rival tuvo mejor visión: ${enemyVision} vs ${allyVision}. Compren más wards de control`,
+      value: allyVision,
+    });
+  }
+
+  // Gold comparison
+  const allyGold = allies.reduce((sum, p) => sum + p.goldEarned, 0);
+  const enemyGold = enemies.reduce((sum, p) => sum + p.goldEarned, 0);
+  const goldDiff = allyGold - enemyGold;
+  if (Math.abs(goldDiff) > 2000) {
+    tips.push({
+      category: "teamAnalysis",
+      level: goldDiff > 0 ? "good" : "bad",
+      message: goldDiff > 0
+        ? `Tu equipo tuvo ${(goldDiff).toLocaleString()} de oro de ventaja`
+        : `El rival tuvo ${Math.abs(goldDiff).toLocaleString()} de oro de ventaja. Mejoren el farmeo y objetivos`,
+      value: goldDiff,
+    });
+  }
+
+  // Kill comparison
+  const allyKills = allies.reduce((sum, p) => sum + p.kills, 0);
+  const enemyKills = enemies.reduce((sum, p) => sum + p.kills, 0);
+  if (allyKills !== enemyKills) {
+    tips.push({
+      category: "teamAnalysis",
+      level: allyKills > enemyKills ? "good" : "bad",
+      message: allyKills > enemyKills
+        ? `Tu equipo dominó en kills: ${allyKills} vs ${enemyKills}`
+        : `El rival tuvo más kills: ${enemyKills} vs ${allyKills}. Eviten peleas desfavorables`,
+      value: allyKills,
+    });
+  }
+
   return tips;
 }
