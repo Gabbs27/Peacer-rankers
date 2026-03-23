@@ -75,4 +75,10 @@ export function getMapImageUrl(mapId: number): string {
   return `${DDRAGON_BASE}/img/map/map${mapId}.png`;
 }
 
+// Mobafire guide search URL for a champion
+export function getMobafireSearchUrl(championName: string): string {
+  const slug = championName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+  return `https://www.mobafire.com/league-of-legends/champion/${slug}`;
+}
+
 export { DDRAGON_VERSION };
