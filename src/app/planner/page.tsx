@@ -168,7 +168,8 @@ export default function PlannerPage() {
               <button
                 key={role.key}
                 onClick={() => setSelectedRole(role.key)}
-                className={`px-3 py-1 rounded text-xs font-bold transition-colors ${
+                aria-pressed={selectedRole === role.key}
+                className={`px-3 py-2 rounded text-xs font-bold transition-colors ${
                   selectedRole === role.key
                     ? "bg-orange-500 text-white"
                     : "bg-gray-600 text-gray-300 hover:bg-gray-500"
@@ -202,7 +203,8 @@ export default function PlannerPage() {
                   <button
                     key={enemy.id}
                     onClick={() => removeEnemy(enemy.id)}
-                    className="flex items-center gap-1 bg-gray-600 rounded-full pr-2 hover:bg-red-900/50 transition-colors group"
+                    className="flex items-center gap-1 bg-gray-600 rounded-full pr-3 py-1 hover:bg-red-900/50 transition-colors group"
+                    aria-label={`Quitar ${enemy.name} del equipo enemigo`}
                     title={`Quitar ${enemy.name}`}
                   >
                     <img
@@ -262,12 +264,14 @@ export default function PlannerPage() {
             ? "Elige tu campeón:"
             : `Elige campeones enemigos (${enemies.length}/5):`}
         </div>
+        <label htmlFor="champion-search" className="sr-only">Buscar campeón</label>
         <input
+          id="champion-search"
           type="text"
           placeholder="Buscar campeón..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-md bg-gray-700 border border-gray-500 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-orange-500"
+          className="w-full max-w-md bg-gray-700 border border-gray-500 rounded-lg px-4 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:border-orange-500"
         />
 
         {loading ? (
@@ -275,7 +279,7 @@ export default function PlannerPage() {
             <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 max-h-[320px] overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 max-h-[400px] overflow-y-auto pr-1" role="grid" aria-label="Selección de campeones">
             {filtered.map((champ) => {
               const isSelected = selectedChampion?.id === champ.id;
               const isEnemy = enemies.some((e) => e.id === champ.id);
@@ -287,7 +291,8 @@ export default function PlannerPage() {
                   key={champ.id}
                   onClick={() => !isDisabled && handleChampionClick(champ)}
                   disabled={isDisabled}
-                  className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors ${
+                  aria-label={`${pickingMode === "player" ? "Seleccionar" : "Agregar enemigo"} ${champ.name}`}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
                     isSelected
                       ? "bg-orange-500/20 ring-2 ring-orange-500"
                       : isEnemy
@@ -310,7 +315,7 @@ export default function PlannerPage() {
                         : "border-gray-600"
                     }`}
                   />
-                  <span className="text-[10px] text-gray-300 text-center truncate w-full leading-tight">
+                  <span className="text-xs text-gray-300 text-center truncate w-full leading-tight">
                     {champ.name}
                   </span>
                 </button>
@@ -326,7 +331,7 @@ export default function PlannerPage() {
 
       {/* Results Panel */}
       {hasResults && runes && build && compAnalysis && selectedChampion && (
-        <div className="bg-gray-700/50 rounded-xl p-5 space-y-6">
+        <section aria-label="Recomendaciones de build" className="bg-gray-700/50 rounded-xl p-5 space-y-6">
           <h2 className="text-xl font-bold text-orange-400">Recomendaciones</h2>
 
           {/* Enemy Comp Analysis */}
@@ -479,7 +484,7 @@ export default function PlannerPage() {
               </svg>
             </a>
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

@@ -14,7 +14,7 @@ export default function ChampionIcon({
   return (
     <img
       src={getChampionIconUrl(championName)}
-      alt={championName}
+      alt={`Campeón ${championName}`}
       width={size}
       height={size}
       className={`rounded-full ${className}`}

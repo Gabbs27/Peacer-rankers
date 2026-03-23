@@ -11,6 +11,8 @@ export default function ItemIcon({ itemId, size = 32 }: Props) {
       <div
         className="bg-gray-700 rounded"
         style={{ width: size, height: size }}
+        role="img"
+        aria-label="Espacio de item vacío"
       />
     );
   }
@@ -18,7 +20,7 @@ export default function ItemIcon({ itemId, size = 32 }: Props) {
   return (
     <img
       src={getItemIconUrl(itemId)}
-      alt={`Item ${itemId}`}
+      alt={`Item de League of Legends (ID: ${itemId})`}
       width={size}
       height={size}
       className="rounded"

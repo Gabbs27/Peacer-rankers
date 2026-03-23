@@ -21,7 +21,8 @@ export default function TipsBadge({ tip }: Props) {
     <div
       className={`px-3 py-2 rounded-lg border text-sm ${levelColors[tip.level]}`}
     >
-      <span className="font-mono mr-2">{levelIcons[tip.level]}</span>
+      <span className="font-mono mr-2" aria-hidden="true">{levelIcons[tip.level]}</span>
+      <span className="sr-only">{tip.level === "good" ? "Bien" : tip.level === "ok" ? "Regular" : "Malo"}:</span>
       {tip.message}
     </div>
   );
