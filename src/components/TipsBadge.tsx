@@ -5,15 +5,15 @@ interface Props {
 }
 
 const levelColors = {
-  good: "bg-green-900/50 text-green-300 border-green-700",
-  ok: "bg-yellow-900/50 text-yellow-300 border-yellow-700",
-  bad: "bg-red-900/50 text-red-300 border-red-700",
+  good: "bg-green-800/40 text-green-200 border-green-600",
+  ok: "bg-yellow-800/40 text-yellow-200 border-yellow-600",
+  bad: "bg-red-800/40 text-red-200 border-red-600",
 };
 
 const levelIcons = {
-  good: "^",
+  good: "\u2713",
   ok: "~",
-  bad: "v",
+  bad: "!",
 };
 
 export default function TipsBadge({ tip }: Props) {
