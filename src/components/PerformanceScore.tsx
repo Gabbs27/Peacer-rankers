@@ -100,7 +100,7 @@ export default function PerformanceScore({ score, actualTier, actualRank }: Prop
             <span className="text-gray-300">Micro</span>
             <span className="text-gray-200 font-semibold">{score.micro}</span>
           </div>
-          <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-3 bg-gray-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={score.micro} aria-valuemin={0} aria-valuemax={100} aria-label="Puntuación micro">
             <div
               className={`h-full rounded-full transition-all ${getBarColor(score.micro)}`}
               style={{ width: `${score.micro}%` }}
@@ -113,7 +113,7 @@ export default function PerformanceScore({ score, actualTier, actualRank }: Prop
             <span className="text-gray-300">Macro</span>
             <span className="text-gray-200 font-semibold">{score.macro}</span>
           </div>
-          <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-3 bg-gray-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={score.macro} aria-valuemin={0} aria-valuemax={100} aria-label="Puntuación macro">
             <div
               className={`h-full rounded-full transition-all ${getBarColor(score.macro)}`}
               style={{ width: `${score.macro}%` }}
@@ -127,6 +127,7 @@ export default function PerformanceScore({ score, actualTier, actualRank }: Prop
       <button
         onClick={() => setShowDetails(!showDetails)}
         className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+        aria-expanded={showDetails}
       >
         {showDetails ? "Ocultar detalles" : "Ver detalles"}
       </button>

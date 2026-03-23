@@ -176,7 +176,7 @@ export default function MatchOverview({ matches, puuid }: Props) {
           </div>
           {currentStreak >= 2 && (
             <p className={`text-xs mt-1 ${streakType === "win" ? "text-blue-400" : "text-red-400"}`}>
-              {streakType === "win" ? "🔥" : "💀"} {currentStreak} {streakType === "win" ? "victorias" : "derrotas"} seguidas
+              {streakType === "win" ? <><span>🔥</span><span className="sr-only">racha positiva</span></> : <><span>💀</span><span className="sr-only">racha negativa</span></>} {currentStreak} {streakType === "win" ? "victorias" : "derrotas"} seguidas
             </p>
           )}
         </div>
@@ -197,6 +197,7 @@ export default function MatchOverview({ matches, puuid }: Props) {
         <button
           onClick={() => setShowFeedback(!showFeedback)}
           className="flex items-center justify-between w-full text-left"
+          aria-expanded={showFeedback}
         >
           <h3 className="text-lg font-bold text-gray-100">
             Coaching Feedback
@@ -211,10 +212,10 @@ export default function MatchOverview({ matches, puuid }: Props) {
             {/* GREAT - Keep doing */}
             <div className="rounded-lg border border-green-500/30 bg-green-900/20 p-4">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">💪</span>
+                <span className="text-lg">💪</span><span className="sr-only">Fortalezas</span>
                 <div>
                   <h4 className="text-sm font-bold text-green-400">Keep Doing</h4>
-                  <p className="text-[10px] text-green-400/60">Lo que haces bien</p>
+                  <p className="text-xs text-green-400/60">Lo que haces bien</p>
                 </div>
               </div>
               {feedback.great.length > 0 ? (
@@ -234,10 +235,10 @@ export default function MatchOverview({ matches, puuid }: Props) {
             {/* MID - Do better */}
             <div className="rounded-lg border border-yellow-500/30 bg-yellow-900/20 p-4">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">⚡</span>
+                <span className="text-lg">⚡</span><span className="sr-only">Mejoras</span>
                 <div>
                   <h4 className="text-sm font-bold text-yellow-400">Do Better</h4>
-                  <p className="text-[10px] text-yellow-400/60">Puedes mejorar</p>
+                  <p className="text-xs text-yellow-400/60">Puedes mejorar</p>
                 </div>
               </div>
               {feedback.mid.length > 0 ? (
@@ -257,10 +258,10 @@ export default function MatchOverview({ matches, puuid }: Props) {
             {/* BAD - To improve */}
             <div className="rounded-lg border border-red-500/30 bg-red-900/20 p-4">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🎯</span>
+                <span className="text-lg">🎯</span><span className="sr-only">Prioridades</span>
                 <div>
                   <h4 className="text-sm font-bold text-red-400">To Improve</h4>
-                  <p className="text-[10px] text-red-400/60">Enfócate en esto</p>
+                  <p className="text-xs text-red-400/60">Enfócate en esto</p>
                 </div>
               </div>
               {feedback.bad.length > 0 ? (
@@ -285,6 +286,7 @@ export default function MatchOverview({ matches, puuid }: Props) {
         <button
           onClick={() => setShowChampions(!showChampions)}
           className="flex items-center justify-between w-full text-left"
+          aria-expanded={showChampions}
         >
           <h3 className="text-lg font-bold text-gray-100">
             Stats por Campeón
@@ -295,7 +297,7 @@ export default function MatchOverview({ matches, puuid }: Props) {
         </button>
 
         {showChampions && (
-          <div className="mt-4 space-y-2">
+          <ul className="mt-4 space-y-2" role="list">
             {champList.map((champ) => {
               const wr = Math.round((champ.wins / champ.games) * 100);
               const kda = champ.deaths === 0
@@ -306,7 +308,7 @@ export default function MatchOverview({ matches, puuid }: Props) {
               const champScore = Math.round(champ.avgScore / champ.games);
 
               return (
-                <div
+                <li
                   key={champ.championName}
                   className="flex items-center gap-3 bg-gray-700/40 rounded-lg p-3 hover:bg-gray-700/60 transition-colors"
                 >
@@ -332,32 +334,32 @@ export default function MatchOverview({ matches, puuid }: Props) {
                     <div className="h-1.5 bg-red-500/40 rounded-full overflow-hidden mt-0.5">
                       <div className="h-full bg-blue-500 rounded-full" style={{ width: `${wr}%` }} />
                     </div>
-                    <p className="text-[10px] text-gray-500">{champ.wins}V {champ.games - champ.wins}D</p>
+                    <p className="text-xs text-gray-500">{champ.wins}V {champ.games - champ.wins}D</p>
                   </div>
 
                   <div className="min-w-[60px] text-center hidden sm:block">
                     <p className="text-sm font-medium text-gray-200">{kda}</p>
-                    <p className="text-[10px] text-gray-500">KDA</p>
+                    <p className="text-xs text-gray-500">KDA</p>
                   </div>
 
                   <div className="min-w-[50px] text-center hidden sm:block">
                     <p className="text-sm font-medium text-gray-200">{csMin}</p>
-                    <p className="text-[10px] text-gray-500">CS/min</p>
+                    <p className="text-xs text-gray-500">CS/min</p>
                   </div>
 
                   <div className="min-w-[50px] text-center hidden md:block">
                     <p className="text-sm font-medium text-gray-200">{avgDmg}k</p>
-                    <p className="text-[10px] text-gray-500">Daño</p>
+                    <p className="text-xs text-gray-500">Daño</p>
                   </div>
 
                   <div className="min-w-[40px] text-center hidden md:block">
                     <p className="text-sm font-bold text-orange-400">{champScore}</p>
-                    <p className="text-[10px] text-gray-500">Score</p>
+                    <p className="text-xs text-gray-500">Score</p>
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </div>
     </div>
@@ -369,7 +371,7 @@ function StatBox({ label, value, sub }: { label: string; value: string; sub: str
     <div className="bg-gray-800/60 rounded-lg p-3 text-center">
       <p className="text-xs text-gray-400 mb-1">{label}</p>
       <p className="text-xl font-bold text-gray-100">{value}</p>
-      <p className="text-[10px] text-gray-500 mt-0.5">{sub}</p>
+      <p className="text-xs text-gray-500 mt-0.5">{sub}</p>
     </div>
   );
 }

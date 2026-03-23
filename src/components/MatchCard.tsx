@@ -61,7 +61,7 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
   );
 
   return (
-    <div
+    <article
       className={`rounded-lg border ${
         player.win
           ? "bg-blue-900/30 border-blue-700/50"
@@ -71,6 +71,8 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
       {/* Summary row */}
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        aria-label={`${player.championName}, ${player.win ? "Victoria" : "Derrota"}, ${player.kills}/${player.deaths}/${player.assists}`}
         className="w-full flex items-center gap-2 sm:gap-3 p-3 sm:p-4 text-left hover:bg-white/5 transition-colors overflow-hidden"
       >
         {/* Win/Loss indicator */}
@@ -79,12 +81,13 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
             player.win ? "bg-blue-500" : "bg-red-500"
           }`}
         />
+        <span className="sr-only">{player.win ? "Victoria" : "Derrota"}</span>
 
         {/* Champion + Summoner Spells */}
         <div className="flex items-center gap-1 shrink-0">
           <div className="flex flex-col items-center">
             <ChampionIcon championName={player.championName} size={40} className="sm:w-12 sm:h-12" />
-            <span className="text-[10px] text-gray-300">
+            <span className="text-xs text-gray-300">
               Lv{player.champLevel}
             </span>
           </div>
@@ -114,7 +117,7 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
           <p className="text-xs text-gray-300">
             {getKDA(player.kills, player.deaths, player.assists)} KDA
           </p>
-          <p className="text-[10px] text-gray-400 sm:hidden">
+          <p className="text-xs text-gray-400 sm:hidden">
             {player.totalMinionsKilled + player.neutralMinionsKilled} CS · {formatDuration(match.info.gameDuration)}
           </p>
         </div>
@@ -159,10 +162,10 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
           >
             {player.win ? "Victoria" : "Derrota"}
           </p>
-          <p className="text-[10px] sm:text-xs text-gray-300 hidden sm:block">
+          <p className="text-xs sm:text-xs text-gray-300 hidden sm:block">
             {getQueueName(match.info.queueId)}
           </p>
-          <p className="text-[10px] sm:text-xs text-gray-400 sm:hidden">
+          <p className="text-xs sm:text-xs text-gray-400 sm:hidden">
             {timeSince}
           </p>
           <p className="text-xs text-gray-400 hidden sm:block lg:hidden">
@@ -176,7 +179,7 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="border-t border-gray-600 p-4 space-y-4">
+        <section aria-label="Detalles de la partida" className="border-t border-gray-600 p-4 space-y-4">
           {/* Performance Score */}
           <PerformanceScoreComponent
             score={perfScore}
@@ -216,6 +219,7 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600/80 hover:bg-orange-500/80 text-white text-sm font-semibold rounded-lg transition-colors"
+              aria-label="Guías en Mobafire (abre en nueva pestaña)"
               onClick={(e) => e.stopPropagation()}
             >
               Guías en Mobafire
@@ -228,6 +232,7 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600/80 hover:bg-blue-500/80 text-white text-sm font-semibold rounded-lg transition-colors"
+              aria-label="Build en u.gg (abre en nueva pestaña)"
               onClick={(e) => e.stopPropagation()}
             >
               Build en u.gg
@@ -379,9 +384,9 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
               );
             })}
           </div>
-        </div>
+        </section>
       )}
-    </div>
+    </article>
   );
 }
 

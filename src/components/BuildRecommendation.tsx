@@ -30,6 +30,7 @@ export default function BuildRecommendation({ recommendation, analysis, buildVer
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-semibold rounded-lg transition-colors"
+          aria-label="Ver build completa en u.gg (abre en nueva pestaña)"
           onClick={(e) => e.stopPropagation()}
         >
           Ver en u.gg

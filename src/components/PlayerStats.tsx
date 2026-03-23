@@ -67,7 +67,7 @@ export default function PlayerStats({
       <div className="flex items-center gap-3 sm:gap-4">
         <img
           src={`https://ddragon.leagueoflegends.com/cdn/16.6.1/img/profileicon/${profileIconId}.png`}
-          alt="Profile Icon"
+          alt={`Icono de perfil de ${gameName}`}
           width={64}
           height={64}
           className="rounded-full border-2 border-blue-500/50 sm:w-20 sm:h-20"
