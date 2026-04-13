@@ -7,6 +7,7 @@ import {
   getKDA,
   getQueueName,
   getMapName,
+  getMapImageUrl,
   getSummonerSpellIconUrl,
   getMobafireSearchUrl,
   getUGGChampionUrl,
@@ -169,11 +170,11 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
           >
             {player.win ? "Victoria" : "Derrota"}
           </p>
-          <p className="text-xs sm:text-xs text-gray-300 hidden sm:block">
+          <p className="text-xs text-gray-300 hidden sm:block">
             {getQueueName(match.info.queueId)}
           </p>
-          <p className="text-xs sm:text-xs text-gray-400 sm:hidden">
-            {timeSince}
+          <p className="text-xs text-gray-400 sm:hidden">
+            {formatDuration(match.info.gameDuration)} · {timeSince}
           </p>
           <p className="text-xs text-gray-400 hidden sm:block lg:hidden">
             {formatDuration(match.info.gameDuration)} · {timeSince}
@@ -209,14 +210,22 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
           )}
 
           {/* Match info bar */}
-          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300 bg-gray-800/40 rounded-lg px-4 py-2">
-            <span className="font-medium text-gray-100">
-              {formatDuration(match.info.gameDuration)}
-            </span>
-            <span className="text-gray-500">·</span>
-            <span>{getMapName(match.info.mapId)}</span>
-            <span className="text-gray-500">·</span>
-            <span>{getQueueName(match.info.queueId)}</span>
+          <div className="flex items-center gap-3 mb-4 p-3 bg-gray-700/30 rounded-lg">
+            <img
+              src={getMapImageUrl(match.info.mapId)}
+              alt={getMapName(match.info.mapId)}
+              width={48}
+              height={48}
+              className="rounded"
+            />
+            <div>
+              <p className="text-sm font-semibold text-gray-100">
+                {getQueueName(match.info.queueId)}
+              </p>
+              <p className="text-xs text-gray-400">
+                {getMapName(match.info.mapId)} · {formatDuration(match.info.gameDuration)} · {timeSince}
+              </p>
+            </div>
           </div>
 
           {/* Guide links */}

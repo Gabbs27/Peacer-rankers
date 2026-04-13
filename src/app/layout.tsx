@@ -16,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className={`${inter.className} bg-gray-800 text-white min-h-screen`}>
+      <body className={`${inter.className} bg-gray-900 text-white min-h-screen`}>
         <a href="#main-content" className="skip-link">
           Saltar al contenido principal
         </a>

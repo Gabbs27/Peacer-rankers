@@ -60,7 +60,7 @@ export default function BuildRecommendation({ recommendation, analysis, buildVer
             {analysis.tankCount} Tank
           </span>
         )}
-        <span className="px-2 py-1 text-gray-500 text-[10px]">
+        <span className="px-2 py-1 text-gray-500 text-xs">
           = {totalDisplayed} enemigos
         </span>
       </div>

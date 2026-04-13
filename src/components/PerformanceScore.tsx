@@ -126,7 +126,7 @@ export default function PerformanceScore({ score, actualTier, actualRank }: Prop
       {/* Toggle details */}
       <button
         onClick={() => setShowDetails(!showDetails)}
-        className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+        className="text-xs text-blue-400 hover:text-blue-300 transition-colors focus-ring rounded"
         aria-expanded={showDetails}
       >
         {showDetails ? "Ocultar detalles" : "Ver detalles"}
