@@ -7,8 +7,7 @@ import {
   getMatches,
 } from "@/lib/riot-api";
 import PlayerStats from "@/components/PlayerStats";
-import MatchOverview from "@/components/MatchOverview";
-import MatchCard from "@/components/MatchCard";
+import SummonerContent from "@/components/SummonerContent";
 
 interface PageProps {
   params: Promise<{ region: string; riotId: string }>;
@@ -43,28 +42,12 @@ export default async function SummonerPage({ params }: PageProps) {
           gameName={account.gameName}
           tagLine={account.tagLine}
         />
-
-        {/* Match Overview */}
-        <MatchOverview matches={matches} puuid={account.puuid} />
-
-        <div>
-          <h2 className="text-xl font-bold mb-4">Historial de Partidas</h2>
-          <div className="space-y-3">
-            {matches.map((match) => (
-              <MatchCard
-                key={match.metadata.matchId}
-                match={match}
-                puuid={account.puuid}
-                ranked={ranked}
-              />
-            ))}
-          </div>
-          {matches.length === 0 && (
-            <p className="text-gray-400 text-center py-8">
-              No se encontraron partidas recientes
-            </p>
-          )}
-        </div>
+        <SummonerContent
+          initialMatches={matches}
+          puuid={account.puuid}
+          region={region}
+          ranked={ranked}
+        />
       </div>
     );
   } catch (error) {
@@ -72,14 +55,9 @@ export default async function SummonerPage({ params }: PageProps) {
       <div className="text-center py-20">
         <h1 className="text-2xl text-red-400">Error</h1>
         <p className="text-gray-300 mt-2">
-          {error instanceof Error
-            ? error.message
-            : "No se pudo cargar el perfil"}
+          {error instanceof Error ? error.message : "No se pudo cargar el perfil"}
         </p>
-        <a
-          href="/"
-          className="text-blue-400 hover:underline mt-4 inline-block"
-        >
+        <a href="/" className="text-blue-400 hover:underline mt-4 inline-block">
           Volver al inicio
         </a>
       </div>
