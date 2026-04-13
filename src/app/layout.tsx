@@ -30,6 +30,9 @@ export default function RootLayout({
           <a href="/planner" className="text-sm text-orange-400 hover:text-orange-300 transition-colors">
             Planner
           </a>
+          <a href="/compare" className="text-sm text-orange-400 hover:text-orange-300 transition-colors">
+            Comparar
+          </a>
         </nav>
         <main id="main-content" className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
           {children}
