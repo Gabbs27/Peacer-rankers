@@ -76,12 +76,14 @@ export async function getLeagueEntries(
 export async function getMatchIds(
   puuid: string,
   region: Region,
-  count: number = 20
+  count: number = 20,
+  start: number = 0,
+  queue?: number
 ): Promise<string[]> {
   const route = REGION_TO_ROUTE[region];
-  return fetchRiot<string[]>(
-    `${regionalUrl(route)}/lol/match/v5/matches/by-puuid/${puuid}/ids?count=${count}`
-  );
+  let url = `${regionalUrl(route)}/lol/match/v5/matches/by-puuid/${puuid}/ids?count=${count}&start=${start}`;
+  if (queue) url += `&queue=${queue}`;
+  return fetchRiot<string[]>(url);
 }
 
 export async function getMatch(
