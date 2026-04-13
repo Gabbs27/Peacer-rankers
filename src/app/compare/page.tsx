@@ -180,7 +180,8 @@ export default function ComparePage() {
     if (!matchesRes.ok) {
       throw new Error(`Error al cargar partidas de ${input.gameName}`);
     }
-    const matches: MatchData[] = await matchesRes.json();
+    const matchesData = await matchesRes.json();
+    const matches: MatchData[] = matchesData.matches || [];
 
     return computePlayerStats(
       input.gameName,
