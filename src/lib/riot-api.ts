@@ -6,6 +6,7 @@ import {
   Region,
   RegionalRoute,
   REGION_TO_ROUTE,
+  CurrentGameInfo,
 } from "./types";
 
 const API_KEY = process.env.RIOT_API_KEY!;
@@ -94,6 +95,22 @@ export async function getMatch(
   return fetchRiot<MatchData>(
     `${regionalUrl(route)}/lol/match/v5/matches/${matchId}`
   );
+}
+
+export async function getCurrentGame(
+  puuid: string,
+  region: Region
+): Promise<CurrentGameInfo | null> {
+  try {
+    return await fetchRiot<CurrentGameInfo>(
+      `${platformUrl(region)}/lol/spectator/v5/active-games/by-summoner/${puuid}`
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("404")) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 // Fetch multiple matches, respecting rate limits

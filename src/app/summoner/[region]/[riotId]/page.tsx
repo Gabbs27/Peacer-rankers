@@ -8,6 +8,7 @@ import {
 } from "@/lib/riot-api";
 import PlayerStats from "@/components/PlayerStats";
 import SummonerContent from "@/components/SummonerContent";
+import LiveGame from "@/components/LiveGame";
 
 interface PageProps {
   params: Promise<{ region: string; riotId: string }>;
@@ -42,6 +43,7 @@ export default async function SummonerPage({ params }: PageProps) {
           gameName={account.gameName}
           tagLine={account.tagLine}
         />
+        <LiveGame puuid={account.puuid} region={region} />
         <SummonerContent
           initialMatches={matches}
           puuid={account.puuid}

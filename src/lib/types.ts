@@ -221,3 +221,28 @@ export interface SummonerProfile {
   ranked: LeagueEntry[];
   recentMatches: MatchData[];
 }
+
+// Spectator V5 types
+export interface CurrentGameParticipant {
+  puuid: string;
+  teamId: number;
+  championId: number;
+  spell1Id: number;
+  spell2Id: number;
+  perks: {
+    perkIds: number[];
+    perkStyle: number;
+    perkSubStyle: number;
+  };
+}
+
+export interface CurrentGameInfo {
+  gameId: number;
+  gameType: string;
+  gameStartTime: number;
+  mapId: number;
+  gameLength: number;
+  gameMode: string;
+  gameQueueConfigId: number;
+  participants: CurrentGameParticipant[];
+}
