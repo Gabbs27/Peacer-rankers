@@ -60,6 +60,13 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
     ...match.info.participants.map((p) => p.totalDamageDealtToChampions)
   );
 
+  // Find worst teammate (exclude self) — only for non-remakes
+  const isRemake = match.info.gameDuration < 300;
+  const allies = match.info.participants.filter(
+    (p) => p.teamId === player.teamId && p.puuid !== puuid
+  );
+  const worstAlly = !isRemake && allies.length > 0 ? findWorstTeammate(allies, match.info.gameDuration) : null;
+
   return (
     <article
       className={`rounded-lg border ${
@@ -339,46 +346,64 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
                   <div className="space-y-1">
                     {match.info.participants
                       .filter((p) => p.teamId === teamId)
-                      .map((p) => (
-                        <div
-                          key={p.puuid}
-                          className={`flex items-center gap-2 p-2 rounded text-sm ${
-                            p.puuid === puuid ? "bg-white/10" : ""
-                          }`}
-                        >
-                          <ChampionIcon
-                            championName={p.championName}
-                            size={28}
-                          />
-                          <span className="text-xs text-gray-400 w-8 shrink-0 text-center" title={p.individualPosition}>
-                            {getRoleLabel(p.individualPosition)}
-                          </span>
-                          <span className="flex-1 truncate min-w-0">
-                            {p.riotIdGameName || p.summonerName}
-                          </span>
-                          <span className="text-gray-200 shrink-0 font-medium">
-                            {p.kills}/{p.deaths}/{p.assists}
-                          </span>
-                          <span
-                            className={`text-xs w-14 text-right shrink-0 ${
-                              p.totalDamageDealtToChampions === highestDmg
-                                ? "text-yellow-300 font-bold"
-                                : "text-gray-300"
-                            }`}
-                          >
-                            {(
-                              p.totalDamageDealtToChampions / 1000
-                            ).toFixed(1)}
-                            k
-                          </span>
-                          <span className="text-yellow-400/70 text-xs w-10 text-right shrink-0 hidden sm:inline">
-                            {(p.goldEarned / 1000).toFixed(1)}k
-                          </span>
-                          <span className="text-blue-400/70 text-xs w-8 text-right shrink-0 hidden sm:inline">
-                            {p.visionScore}v
-                          </span>
-                        </div>
-                      ))}
+                      .map((p) => {
+                        const isWorst = isPlayerTeam && worstAlly && p.puuid === worstAlly.player.puuid;
+                        return (
+                          <div key={p.puuid}>
+                            <div
+                              className={`flex items-center gap-2 p-2 rounded text-sm ${
+                                p.puuid === puuid
+                                  ? "bg-white/10"
+                                  : isWorst
+                                  ? "bg-red-900/30 border border-red-600/40"
+                                  : ""
+                              }`}
+                            >
+                              <ChampionIcon
+                                championName={p.championName}
+                                size={28}
+                              />
+                              <span className="text-xs text-gray-400 w-8 shrink-0 text-center" title={p.individualPosition}>
+                                {getRoleLabel(p.individualPosition)}
+                              </span>
+                              <span className={`flex-1 truncate min-w-0 ${isWorst ? "text-red-300" : ""}`}>
+                                {p.riotIdGameName || p.summonerName}
+                                {isWorst && (
+                                  <span className="text-red-400 text-xs ml-1 font-medium">
+                                    ← peor rendimiento
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-gray-200 shrink-0 font-medium">
+                                {p.kills}/{p.deaths}/{p.assists}
+                              </span>
+                              <span
+                                className={`text-xs w-14 text-right shrink-0 ${
+                                  p.totalDamageDealtToChampions === highestDmg
+                                    ? "text-yellow-300 font-bold"
+                                    : "text-gray-300"
+                                }`}
+                              >
+                                {(
+                                  p.totalDamageDealtToChampions / 1000
+                                ).toFixed(1)}
+                                k
+                              </span>
+                              <span className="text-yellow-400/70 text-xs w-10 text-right shrink-0 hidden sm:inline">
+                                {(p.goldEarned / 1000).toFixed(1)}k
+                              </span>
+                              <span className="text-blue-400/70 text-xs w-8 text-right shrink-0 hidden sm:inline">
+                                {p.visionScore}v
+                              </span>
+                            </div>
+                            {isWorst && (
+                              <div className="ml-10 mt-0.5 mb-1 px-2 py-1 bg-red-900/20 rounded text-xs text-red-300 border-l-2 border-red-500/50">
+                                {worstAlly.reason}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               );
@@ -554,4 +579,52 @@ function getTimeSince(timestamp: number): string {
   if (days > 0) return `hace ${days}d`;
   if (hours > 0) return `hace ${hours}h`;
   return `hace ${minutes}m`;
+}
+
+interface WorstTeammate {
+  player: { puuid: string };
+  reason: string;
+  score: number;
+}
+
+function findWorstTeammate(
+  allies: import("@/lib/types").MatchParticipant[],
+  gameDuration: number
+): WorstTeammate | null {
+  if (allies.length === 0) return null;
+  const minutes = gameDuration / 60;
+  if (minutes < 5) return null;
+
+  const scored = allies.map((p) => {
+    const kda = p.deaths === 0 ? (p.kills + p.assists) * 1.5 : (p.kills + p.assists) / p.deaths;
+    const csMin = (p.totalMinionsKilled + p.neutralMinionsKilled) / minutes;
+    const dmgMin = p.totalDamageDealtToChampions / minutes;
+    const deathsMin = p.deaths / minutes;
+    const isSupport = p.individualPosition === "UTILITY";
+
+    // Build a composite score (lower = worse)
+    let score = 0;
+    score += Math.min(kda, 6) * 15;         // KDA: max 90
+    score += Math.min(csMin, 8) * (isSupport ? 2 : 8); // CS: max 64 (16 for sup)
+    score += Math.min(dmgMin / 100, 10) * 5; // Damage/min: max 50
+    score -= deathsMin * 20;                  // Death penalty
+    score += Math.min(p.visionScore / minutes, 2) * (isSupport ? 15 : 5); // Vision
+
+    // Reasons
+    const reasons: string[] = [];
+    if (kda < 1.0) reasons.push(`KDA muy bajo (${kda.toFixed(1)})`);
+    if (deathsMin > 0.4) reasons.push(`${p.deaths} muertes en ${Math.round(minutes)} min`);
+    if (!isSupport && csMin < 4) reasons.push(`CS/min bajo (${csMin.toFixed(1)})`);
+    if (dmgMin < 300 && !isSupport) reasons.push(`Daño a campeones muy bajo (${(p.totalDamageDealtToChampions / 1000).toFixed(1)}k)`);
+    if (p.visionScore < 5 && minutes > 15) reasons.push(`Visión casi nula (${p.visionScore})`);
+
+    const reason = reasons.length > 0
+      ? reasons.join(" · ")
+      : `Rendimiento general bajo (KDA ${kda.toFixed(1)}, ${(p.totalDamageDealtToChampions / 1000).toFixed(1)}k daño)`;
+
+    return { player: p, score, reason };
+  });
+
+  scored.sort((a, b) => a.score - b.score);
+  return scored[0];
 }
