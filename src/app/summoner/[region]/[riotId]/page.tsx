@@ -6,11 +6,13 @@ import {
   getLeagueEntries,
   getMatchIds,
   getMatches,
+  getChampionMastery,
   RiotApiError,
 } from "@/lib/riot-api";
 import { getDDragonVersion } from "@/lib/data-dragon";
-import type { LeagueEntry, MatchData, RiotAccount, Summoner } from "@/lib/types";
+import type { ChampionMastery, LeagueEntry, MatchData, RiotAccount, Summoner } from "@/lib/types";
 import PlayerStats from "@/components/PlayerStats";
+import ChampionMasterySection from "@/components/ChampionMastery";
 import SummonerContent from "@/components/SummonerContent";
 import LiveGame from "@/components/LiveGame";
 
@@ -35,6 +37,7 @@ interface ProfileData {
   summoner: Summoner;
   ranked: LeagueEntry[];
   matches: MatchData[];
+  mastery: ChampionMastery[];
   ddragonVersion: string;
 }
 
@@ -62,14 +65,16 @@ export default async function SummonerPage({ params }: PageProps) {
 
   try {
     const account = await getAccountByRiotId(gameName, tagLine, region);
-    const [summoner, ranked, matchIds, ddragonVersion] = await Promise.all([
+    const [summoner, ranked, matchIds, ddragonVersion, mastery] = await Promise.all([
       getSummonerByPuuid(account.puuid, region),
       getLeagueEntries(account.puuid, region),
       getMatchIds(account.puuid, region, 10),
       getDDragonVersion(),
+      // Non-critical: some dev keys lack champion-mastery access — degrade to empty.
+      getChampionMastery(account.puuid, region, 8).catch(() => [] as ChampionMastery[]),
     ]);
     const matches = await getMatches(matchIds, region);
-    data = { account, summoner, ranked, matches, ddragonVersion };
+    data = { account, summoner, ranked, matches, mastery, ddragonVersion };
   } catch (error) {
     errorMessage =
       error instanceof RiotApiError ? error.publicMessage : "No se pudo cargar el perfil.";
@@ -87,8 +92,10 @@ export default async function SummonerPage({ params }: PageProps) {
         profileIconId={data.summoner.profileIconId}
         gameName={data.account.gameName}
         tagLine={data.account.tagLine}
+        region={region}
         ddragonVersion={data.ddragonVersion}
       />
+      <ChampionMasterySection mastery={data.mastery} />
       <LiveGame puuid={data.account.puuid} region={region} />
       <SummonerContent
         initialMatches={data.matches}
