@@ -5,6 +5,18 @@ export interface RiotAccount {
   tagLine: string;
 }
 
+// Champion Mastery API (champion-mastery-v4)
+export interface ChampionMastery {
+  championId: number;
+  championLevel: number;
+  championPoints: number;
+  lastPlayTime: number;
+  championPointsSinceLastLevel: number;
+  championPointsUntilNextLevel: number;
+  chestGranted: boolean;
+  tokensEarned: number;
+}
+
 // Summoner API response
 export interface Summoner {
   id: string;
@@ -62,6 +74,10 @@ export interface MatchParticipant {
   summoner1Id: number;
   summoner2Id: number;
   individualPosition: string;
+  // Riot's constraint-solved position (exactly one per role per team) — preferred
+  // over individualPosition for lane-opponent matching. Optional: absent/"" in
+  // some modes and older matches.
+  teamPosition?: string;
   role: string;
   totalDamageDealt: number;
   totalDamageTaken: number;
@@ -145,9 +161,50 @@ export interface MatchData {
   info: MatchInfo;
 }
 
+// --- Match-V5 TIMELINE (per-minute frames + events) ---
+
+export interface TimelineParticipantFrame {
+  participantId: number;
+  totalGold: number;
+  xp: number;
+  level: number;
+  minionsKilled: number;
+  jungleMinionsKilled: number;
+}
+
+// Events carry different fields per type; we model only what we consume.
+export interface TimelineEvent {
+  type: string;
+  timestamp: number;
+  participantId?: number;
+  itemId?: number;
+  beforeId?: number;
+  afterId?: number;
+  killerId?: number;
+  victimId?: number;
+}
+
+export interface TimelineFrame {
+  timestamp: number;
+  participantFrames: Record<string, TimelineParticipantFrame>;
+  events: TimelineEvent[];
+}
+
+export interface TimelineData {
+  metadata: MatchMetadata; // metadata.participants[i] puuid ↔ participantId i+1
+  info: {
+    frameInterval: number;
+    frames: TimelineFrame[];
+    // Documented puuid ↔ participantId mapping; preferred over the metadata
+    // index convention when present.
+    participants?: { participantId: number; puuid: string }[];
+  };
+}
+
 // Regions
 export type Region = "na1" | "euw1" | "eun1" | "kr" | "br1" | "la1" | "la2" | "oc1" | "tr1" | "ru" | "jp1" | "ph2" | "sg2" | "th2" | "tw2" | "vn2";
 
+// Regional route used by Match-V5 (supports the `sea` cluster).
 export type RegionalRoute = "americas" | "europe" | "asia" | "sea";
 
 export const REGION_TO_ROUTE: Record<Region, RegionalRoute> = {
@@ -168,6 +225,37 @@ export const REGION_TO_ROUTE: Record<Region, RegionalRoute> = {
   tw2: "sea",
   vn2: "sea",
 };
+
+// Account-V1 is a GLOBAL service served ONLY from americas / asia / europe
+// (there is NO `sea` cluster for account-v1). It returns the same account from
+// any of the three, so we route to the geographically nearest valid cluster.
+export type AccountRoute = "americas" | "europe" | "asia";
+
+export const REGION_TO_ACCOUNT_ROUTE: Record<Region, AccountRoute> = {
+  na1: "americas",
+  br1: "americas",
+  la1: "americas",
+  la2: "americas",
+  oc1: "americas",
+  euw1: "europe",
+  eun1: "europe",
+  tr1: "europe",
+  ru: "europe",
+  kr: "asia",
+  jp1: "asia",
+  ph2: "asia",
+  sg2: "asia",
+  th2: "asia",
+  tw2: "asia",
+  vn2: "asia",
+};
+
+// Runtime type guard — the single source of truth for "is this a region we support?".
+// Used at every trust boundary (API routes, dynamic pages) to reject unvalidated
+// input BEFORE it is interpolated into a Riot host, closing the SSRF/host-injection vector.
+export function isValidRegion(value: unknown): value is Region {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(REGION_TO_ROUTE, value);
+}
 
 export const REGION_LABELS: Record<Region, string> = {
   na1: "NA",

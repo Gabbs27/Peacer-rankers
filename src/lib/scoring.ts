@@ -5,6 +5,14 @@ import {
   ScoreBreakdown,
 } from "./types";
 
+// A game shorter than this is a remake (or otherwise too short to evaluate).
+// Single source of truth — imported by every call site instead of re-hardcoding 300.
+export const REMAKE_THRESHOLD_SECONDS = 300;
+
+export function isRemake(matchInfo: MatchInfo): boolean {
+  return matchInfo.gameDuration < REMAKE_THRESHOLD_SECONDS;
+}
+
 function clamp(value: number, max: number): number {
   return Math.max(0, Math.min(value, max));
 }
@@ -19,7 +27,10 @@ export function calculatePerformanceScore(
   player: MatchParticipant,
   matchInfo: MatchInfo
 ): PerformanceScore {
-  const gameDurationMinutes = matchInfo.gameDuration / 60;
+  // Floor at 1 minute so a 0/near-0 duration can never produce Infinity per-minute
+  // rates that lerp() would clamp to a maxed-out (inflated) score. Real remakes are
+  // filtered by callers via isRemake(); this is defense in depth.
+  const gameDurationMinutes = Math.max(matchInfo.gameDuration / 60, 1);
   const position = player.individualPosition;
   const allies = matchInfo.participants.filter((p) => p.teamId === player.teamId);
   const playerTeam = matchInfo.teams.find((t) => t.teamId === player.teamId);

@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMatch } from "@/lib/riot-api";
-import { Region } from "@/lib/types";
+import { isValidRegion } from "@/lib/types";
+import { riotErrorResponse } from "@/lib/api-helpers";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const region = request.nextUrl.searchParams.get("region") as Region;
+  const region = request.nextUrl.searchParams.get("region");
 
-  if (!region) {
+  if (!id || !isValidRegion(region)) {
     return NextResponse.json(
-      { error: "region is required" },
+      { error: "id y una región válida son requeridos" },
       { status: 400 }
     );
   }
@@ -20,8 +21,6 @@ export async function GET(
     const match = await getMatch(id, region);
     return NextResponse.json(match);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return riotErrorResponse(error);
   }
 }

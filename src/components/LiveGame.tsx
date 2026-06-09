@@ -7,8 +7,9 @@ import {
   getChampionIconUrl,
   getSummonerSpellIconUrl,
   getQueueName,
-  DDRAGON_VERSION,
+  getChampionDataUrl,
 } from "@/lib/data-dragon";
+import { useDDragonVersion } from "./DDragonProvider";
 
 interface ChampionData {
   key: string;
@@ -28,21 +29,20 @@ interface LiveGameData {
   error?: string;
 }
 
-// Map champion ID (number) to champion name (Data Dragon key)
-let championByIdCache: Record<number, string> | null = null;
+// Map champion ID (number) to champion name (Data Dragon key), cached per version.
+const championByIdCache = new Map<string, Record<number, string>>();
 
-async function getChampionById(): Promise<Record<number, string>> {
-  if (championByIdCache) return championByIdCache;
+async function getChampionById(version: string): Promise<Record<number, string>> {
+  const cached = championByIdCache.get(version);
+  if (cached) return cached;
 
-  const res = await fetch(
-    `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/data/en_US/champion.json`
-  );
+  const res = await fetch(getChampionDataUrl(version));
   const data = await res.json();
   const map: Record<number, string> = {};
   for (const champ of Object.values(data.data) as ChampionData[]) {
     map[parseInt(champ.key)] = champ.id;
   }
-  championByIdCache = map;
+  championByIdCache.set(version, map);
   return map;
 }
 
@@ -65,18 +65,21 @@ function RankBadge({ rank }: { rank: { tier: string; rank: string; lp: number } 
 }
 
 export default function LiveGame({ puuid, region }: LiveGameProps) {
+  const ddragonVersion = useDDragonVersion();
   const [data, setData] = useState<LiveGameData | null>(null);
   const [championMap, setChampionMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [is403, setIs403] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     async function fetchLiveGame() {
       try {
         const [res, champMap] = await Promise.all([
           fetch(`/api/live-game?puuid=${encodeURIComponent(puuid)}&region=${encodeURIComponent(region)}`),
-          getChampionById(),
+          getChampionById(ddragonVersion),
         ]);
+        if (cancelled) return;
         setChampionMap(champMap);
 
         if (res.status === 403) {
@@ -86,16 +89,20 @@ export default function LiveGame({ puuid, region }: LiveGameProps) {
         }
 
         const json = await res.json();
+        if (cancelled) return;
         setData(json);
       } catch {
-        setData(null);
+        if (!cancelled) setData(null);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchLiveGame();
-  }, [puuid, region]);
+    return () => {
+      cancelled = true;
+    };
+  }, [puuid, region, ddragonVersion]);
 
   if (loading) {
     return (
@@ -158,7 +165,7 @@ export default function LiveGame({ puuid, region }: LiveGameProps) {
                   }`}
                 >
                   <Image
-                    src={getChampionIconUrl(champName)}
+                    src={getChampionIconUrl(champName, ddragonVersion)}
                     alt={champName}
                     width={28}
                     height={28}
@@ -167,7 +174,7 @@ export default function LiveGame({ puuid, region }: LiveGameProps) {
                   />
                   <div className="flex items-center gap-1">
                     <Image
-                      src={getSummonerSpellIconUrl(p.spell1Id)}
+                      src={getSummonerSpellIconUrl(p.spell1Id, ddragonVersion)}
                       alt="Spell 1"
                       width={14}
                       height={14}
@@ -175,7 +182,7 @@ export default function LiveGame({ puuid, region }: LiveGameProps) {
                       unoptimized
                     />
                     <Image
-                      src={getSummonerSpellIconUrl(p.spell2Id)}
+                      src={getSummonerSpellIconUrl(p.spell2Id, ddragonVersion)}
                       alt="Spell 2"
                       width={14}
                       height={14}
@@ -210,7 +217,7 @@ export default function LiveGame({ puuid, region }: LiveGameProps) {
                   }`}
                 >
                   <Image
-                    src={getChampionIconUrl(champName)}
+                    src={getChampionIconUrl(champName, ddragonVersion)}
                     alt={champName}
                     width={28}
                     height={28}
@@ -219,7 +226,7 @@ export default function LiveGame({ puuid, region }: LiveGameProps) {
                   />
                   <div className="flex items-center gap-1">
                     <Image
-                      src={getSummonerSpellIconUrl(p.spell1Id)}
+                      src={getSummonerSpellIconUrl(p.spell1Id, ddragonVersion)}
                       alt="Spell 1"
                       width={14}
                       height={14}
@@ -227,7 +234,7 @@ export default function LiveGame({ puuid, region }: LiveGameProps) {
                       unoptimized
                     />
                     <Image
-                      src={getSummonerSpellIconUrl(p.spell2Id)}
+                      src={getSummonerSpellIconUrl(p.spell2Id, ddragonVersion)}
                       alt="Spell 2"
                       width={14}
                       height={14}

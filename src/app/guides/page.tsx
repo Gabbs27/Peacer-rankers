@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getChampionIconUrl, getMobafireSearchUrl } from "@/lib/data-dragon";
+import { getChampionIconUrl, getMobafireSearchUrl, getChampionDataUrl } from "@/lib/data-dragon";
+import { useDDragonVersion } from "@/components/DDragonProvider";
 
 interface ChampionData {
   id: string;
@@ -10,14 +11,13 @@ interface ChampionData {
 }
 
 export default function GuidesPage() {
+  const ddragonVersion = useDDragonVersion();
   const [champions, setChampions] = useState<ChampionData[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(
-      "https://ddragon.leagueoflegends.com/cdn/16.6.1/data/es_MX/champion.json"
-    )
+    fetch(getChampionDataUrl(ddragonVersion, "es_MX"))
       .then((res) => res.json())
       .then((data) => {
         const champs = Object.values(data.data) as ChampionData[];
@@ -26,7 +26,7 @@ export default function GuidesPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [ddragonVersion]);
 
   const filtered = champions.filter(
     (c) =>
@@ -70,7 +70,7 @@ export default function GuidesPage() {
               className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-700/50 transition-colors group"
             >
               <img
-                src={getChampionIconUrl(champ.id)}
+                src={getChampionIconUrl(champ.id, ddragonVersion)}
                 alt={champ.name}
                 width={56}
                 height={56}
