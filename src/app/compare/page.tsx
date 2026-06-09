@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Region, REGION_LABELS, MatchData, MatchParticipant, MatchInfo } from "@/lib/types";
-import { calculatePerformanceScore } from "@/lib/scoring";
+import { calculatePerformanceScore, isRemake } from "@/lib/scoring";
 import { getChampionIconUrl } from "@/lib/data-dragon";
+import { useDDragonVersion } from "@/components/DDragonProvider";
 
 const regions = Object.entries(REGION_LABELS) as [Region, string][];
 
@@ -52,6 +54,8 @@ function computePlayerStats(
   for (const match of matches) {
     const player = match.info.participants.find((p) => p.puuid === puuid);
     if (!player) continue;
+    // Remakes are too short to evaluate — excluding them keeps averages honest (M2).
+    if (isRemake(match.info)) continue;
     count++;
 
     if (player.win) wins++;
@@ -158,6 +162,7 @@ function StatRow({
 }
 
 export default function ComparePage() {
+  const ddragonVersion = useDDragonVersion();
   const [player1, setPlayer1] = useState<SummonerInput>({ gameName: "", tagLine: "", region: "la1" });
   const [player2, setPlayer2] = useState<SummonerInput>({ gameName: "", tagLine: "", region: "la1" });
   const [stats1, setStats1] = useState<PlayerStats | null>(null);
@@ -323,10 +328,13 @@ export default function ComparePage() {
                             <span className={`text-sm font-medium ${game.p1.win ? "text-green-400" : "text-red-400"}`}>
                               {game.p1.win ? "Victoria" : "Derrota"}
                             </span>
-                            <img
-                              src={getChampionIconUrl(game.p1.championName)}
+                            <Image
+                              src={getChampionIconUrl(game.p1.championName, ddragonVersion)}
                               alt={game.p1.championName}
-                              className="w-8 h-8 rounded"
+                              width={32}
+                              height={32}
+                              className="rounded"
+                              unoptimized
                             />
                           </div>
                           <div className="text-sm text-gray-300">
@@ -345,10 +353,13 @@ export default function ComparePage() {
                         {/* Player 2 */}
                         <div className="text-left space-y-1">
                           <div className="flex items-center gap-2">
-                            <img
-                              src={getChampionIconUrl(game.p2.championName)}
+                            <Image
+                              src={getChampionIconUrl(game.p2.championName, ddragonVersion)}
                               alt={game.p2.championName}
-                              className="w-8 h-8 rounded"
+                              width={32}
+                              height={32}
+                              className="rounded"
+                              unoptimized
                             />
                             <span className={`text-sm font-medium ${game.p2.win ? "text-green-400" : "text-red-400"}`}>
                               {game.p2.win ? "Victoria" : "Derrota"}
