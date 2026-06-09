@@ -4,31 +4,31 @@ import {
   getSummonerByPuuid,
   getLeagueEntries,
 } from "@/lib/riot-api";
-import { Region } from "@/lib/types";
+import { isValidRegion } from "@/lib/types";
+import { riotErrorResponse } from "@/lib/api-helpers";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const gameName = searchParams.get("gameName");
   const tagLine = searchParams.get("tagLine");
-  const region = searchParams.get("region") as Region;
+  const region = searchParams.get("region");
 
-  if (!gameName || !tagLine || !region) {
+  if (!gameName || !tagLine || !isValidRegion(region)) {
     return NextResponse.json(
-      { error: "gameName, tagLine, and region are required" },
+      { error: "gameName, tagLine y una región válida son requeridos" },
       { status: 400 }
     );
   }
 
   try {
     const account = await getAccountByRiotId(gameName, tagLine, region);
-    const summoner = await getSummonerByPuuid(account.puuid, region);
-    const ranked = await getLeagueEntries(account.puuid, region);
+    const [summoner, ranked] = await Promise.all([
+      getSummonerByPuuid(account.puuid, region),
+      getLeagueEntries(account.puuid, region),
+    ]);
 
     return NextResponse.json({ account, summoner, ranked });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
-    const status = message.includes("404") ? 404 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return riotErrorResponse(error);
   }
 }

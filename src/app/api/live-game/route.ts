@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentGame, getLeagueEntries } from "@/lib/riot-api";
-import { Region } from "@/lib/types";
+import { getCurrentGame, getLeagueEntries, RiotApiError } from "@/lib/riot-api";
+import { isValidRegion } from "@/lib/types";
+import { riotErrorResponse } from "@/lib/api-helpers";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const puuid = searchParams.get("puuid");
-  const region = searchParams.get("region") as Region;
+  const region = searchParams.get("region");
 
-  if (!puuid || !region) {
-    return NextResponse.json({ error: "puuid and region required" }, { status: 400 });
+  if (!puuid || !isValidRegion(region)) {
+    return NextResponse.json(
+      { error: "puuid y una región válida son requeridos" },
+      { status: 400 }
+    );
   }
 
   try {
@@ -17,7 +21,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ inGame: false });
     }
 
-    // Fetch ranks for all participants in batches of 5
+    // Fetch ranks for all participants in batches of 5.
     const ranks: Record<string, { tier: string; rank: string; lp: number } | null> = {};
 
     for (let i = 0; i < game.participants.length; i += 5) {
@@ -35,20 +39,16 @@ export async function GET(request: NextRequest) {
           }
         })
       );
-      if (i + 5 < game.participants.length) {
-        await new Promise((r) => setTimeout(r, 1200));
-      }
     }
 
     return NextResponse.json({ inGame: true, game, ranks });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    if (message.includes("403")) {
+    if (error instanceof RiotApiError && error.status === 403) {
       return NextResponse.json(
-        { error: "Spectator API no disponible con esta API key" },
+        { error: "La API de espectador no está disponible con esta API key." },
         { status: 403 }
       );
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    return riotErrorResponse(error);
   }
 }
