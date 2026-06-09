@@ -74,6 +74,10 @@ export interface MatchParticipant {
   summoner1Id: number;
   summoner2Id: number;
   individualPosition: string;
+  // Riot's constraint-solved position (exactly one per role per team) — preferred
+  // over individualPosition for lane-opponent matching. Optional: absent/"" in
+  // some modes and older matches.
+  teamPosition?: string;
   role: string;
   totalDamageDealt: number;
   totalDamageTaken: number;
@@ -155,6 +159,46 @@ export interface MatchMetadata {
 export interface MatchData {
   metadata: MatchMetadata;
   info: MatchInfo;
+}
+
+// --- Match-V5 TIMELINE (per-minute frames + events) ---
+
+export interface TimelineParticipantFrame {
+  participantId: number;
+  totalGold: number;
+  xp: number;
+  level: number;
+  minionsKilled: number;
+  jungleMinionsKilled: number;
+}
+
+// Events carry different fields per type; we model only what we consume.
+export interface TimelineEvent {
+  type: string;
+  timestamp: number;
+  participantId?: number;
+  itemId?: number;
+  beforeId?: number;
+  afterId?: number;
+  killerId?: number;
+  victimId?: number;
+}
+
+export interface TimelineFrame {
+  timestamp: number;
+  participantFrames: Record<string, TimelineParticipantFrame>;
+  events: TimelineEvent[];
+}
+
+export interface TimelineData {
+  metadata: MatchMetadata; // metadata.participants[i] puuid ↔ participantId i+1
+  info: {
+    frameInterval: number;
+    frames: TimelineFrame[];
+    // Documented puuid ↔ participantId mapping; preferred over the metadata
+    // index convention when present.
+    participants?: { participantId: number; puuid: string }[];
+  };
 }
 
 // Regions

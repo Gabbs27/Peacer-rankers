@@ -4,6 +4,7 @@ import {
   Summoner,
   LeagueEntry,
   MatchData,
+  TimelineData,
   ChampionMastery,
   Region,
   REGION_TO_ROUTE,
@@ -59,6 +60,7 @@ const TTL = {
   league: 5 * 60, // rank / LP
   matchIds: 60, // recent match list
   match: 24 * 60 * 60, // a finished match is immutable
+  timeline: 24 * 60 * 60, // a finished match's timeline is immutable
   mastery: 10 * 60, // mastery points change per game
 } as const;
 
@@ -90,6 +92,29 @@ const matchSchema = z.object({
 const masterySchema = z.array(
   z.object({ championId: z.number(), championLevel: z.number(), championPoints: z.number() })
 );
+const timelineSchema = z.object({
+  metadata: z.object({ participants: z.array(z.string()).min(1) }),
+  info: z.object({
+    frameInterval: z.number(),
+    frames: z
+      .array(
+        z.object({
+          timestamp: z.number(),
+          participantFrames: z.record(
+            z.string(),
+            z.object({
+              totalGold: z.number(),
+              xp: z.number(),
+              minionsKilled: z.number(),
+              jungleMinionsKilled: z.number(),
+            })
+          ),
+          events: z.array(z.object({ type: z.string(), timestamp: z.number() })),
+        })
+      )
+      .min(1),
+  }),
+});
 
 /**
  * Raw Riot fetch. Caching is owned by the cached() wrappers (so failures are never
@@ -206,6 +231,15 @@ export async function getMatch(matchId: string, region: Region): Promise<MatchDa
     fetchRiotRaw<MatchData>(
       `${matchHost(region)}/lol/match/v5/matches/${encodeURIComponent(matchId)}`,
       matchSchema
+    )
+  );
+}
+
+export async function getMatchTimeline(matchId: string, region: Region): Promise<TimelineData> {
+  return cached(["timeline", region, matchId], TTL.timeline, () =>
+    fetchRiotRaw<TimelineData>(
+      `${matchHost(region)}/lol/match/v5/matches/${encodeURIComponent(matchId)}/timeline`,
+      timelineSchema
     )
   );
 }
