@@ -1,4 +1,7 @@
+"use client";
+
 import { getItemIconUrl } from "@/lib/data-dragon";
+import { useDDragonVersion } from "./DDragonProvider";
 
 interface Props {
   itemId: number;
@@ -6,6 +9,8 @@ interface Props {
 }
 
 export default function ItemIcon({ itemId, size = 32 }: Props) {
+  const version = useDDragonVersion();
+
   if (itemId === 0) {
     return (
       <div
@@ -19,7 +24,7 @@ export default function ItemIcon({ itemId, size = 32 }: Props) {
 
   return (
     <img
-      src={getItemIconUrl(itemId)}
+      src={getItemIconUrl(itemId, version)}
       alt={`Item de League of Legends (ID: ${itemId})`}
       width={size}
       height={size}

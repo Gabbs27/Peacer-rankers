@@ -1,4 +1,5 @@
 import { LeagueEntry } from "@/lib/types";
+import { getProfileIconUrl } from "@/lib/data-dragon";
 
 interface Props {
   ranked: LeagueEntry[];
@@ -6,6 +7,7 @@ interface Props {
   profileIconId: number;
   gameName: string;
   tagLine: string;
+  ddragonVersion: string;
 }
 
 const tierColors: Record<string, string> = {
@@ -27,6 +29,7 @@ export default function PlayerStats({
   profileIconId,
   gameName,
   tagLine,
+  ddragonVersion,
 }: Props) {
   const soloQ = ranked.find((r) => r.queueType === "RANKED_SOLO_5x5");
   const flex = ranked.find((r) => r.queueType === "RANKED_FLEX_SR");
@@ -66,7 +69,7 @@ export default function PlayerStats({
     <div className="flex flex-col sm:flex-row gap-6 items-start">
       <div className="flex items-center gap-3 sm:gap-4">
         <img
-          src={`https://ddragon.leagueoflegends.com/cdn/16.6.1/img/profileicon/${profileIconId}.png`}
+          src={getProfileIconUrl(profileIconId, ddragonVersion)}
           alt={`Icono de perfil de ${gameName}`}
           width={64}
           height={64}

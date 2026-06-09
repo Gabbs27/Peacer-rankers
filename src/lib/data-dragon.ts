@@ -1,20 +1,40 @@
-const DDRAGON_VERSION = "16.6.1";
-const DDRAGON_BASE = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}`;
+// Fallback used when the DDragon versions API is unreachable. Update occasionally
+// — but the `getDDragonVersion()` fetch below is what runs in normal flow.
+export const FALLBACK_DDRAGON_VERSION = "16.9.1";
 
-export function getChampionIconUrl(championName: string): string {
-  return `${DDRAGON_BASE}/img/champion/${championName}.png`;
+const VERSIONS_URL = "https://ddragon.leagueoflegends.com/api/versions.json";
+
+// Server-only: fetched once per 24h via Next's data cache.
+export async function getDDragonVersion(): Promise<string> {
+  try {
+    const res = await fetch(VERSIONS_URL, {
+      next: { revalidate: 86400 },
+    });
+    if (!res.ok) return FALLBACK_DDRAGON_VERSION;
+    const versions: string[] = await res.json();
+    return versions[0] ?? FALLBACK_DDRAGON_VERSION;
+  } catch {
+    return FALLBACK_DDRAGON_VERSION;
+  }
 }
 
-export function getItemIconUrl(itemId: number): string {
+const base = (version: string) =>
+  `https://ddragon.leagueoflegends.com/cdn/${version}`;
+
+export function getChampionIconUrl(championName: string, version: string): string {
+  return `${base(version)}/img/champion/${championName}.png`;
+}
+
+export function getItemIconUrl(itemId: number, version: string): string {
   if (itemId === 0) return "";
-  return `${DDRAGON_BASE}/img/item/${itemId}.png`;
+  return `${base(version)}/img/item/${itemId}.png`;
 }
 
-export function getProfileIconUrl(iconId: number): string {
-  return `${DDRAGON_BASE}/img/profileicon/${iconId}.png`;
+export function getProfileIconUrl(iconId: number, version: string): string {
+  return `${base(version)}/img/profileicon/${iconId}.png`;
 }
 
-export function getSummonerSpellIconUrl(spellId: number): string {
+export function getSummonerSpellIconUrl(spellId: number, version: string): string {
   const spellMap: Record<number, string> = {
     1: "SummonerBoost",
     3: "SummonerExhaust",
@@ -29,7 +49,15 @@ export function getSummonerSpellIconUrl(spellId: number): string {
     32: "SummonerSnowball",
   };
   const name = spellMap[spellId] || "SummonerFlash";
-  return `${DDRAGON_BASE}/img/spell/${name}.png`;
+  return `${base(version)}/img/spell/${name}.png`;
+}
+
+export function getMapImageUrl(mapId: number, version: string): string {
+  return `${base(version)}/img/map/map${mapId}.png`;
+}
+
+export function getChampionDataUrl(version: string, locale: string = "en_US"): string {
+  return `${base(version)}/data/${locale}/champion.json`;
 }
 
 export function getQueueName(queueId: number): string {
@@ -71,10 +99,6 @@ export function getMapName(mapId: number): string {
   return mapNames[mapId] || "Otro";
 }
 
-export function getMapImageUrl(mapId: number): string {
-  return `${DDRAGON_BASE}/img/map/map${mapId}.png`;
-}
-
 // Mobafire guide search URL for a champion
 export function getMobafireSearchUrl(championName: string): string {
   const slug = championName.toLowerCase().replace(/[^a-z0-9]/g, "-");
@@ -89,5 +113,3 @@ export function getUGGChampionUrl(championName: string): string {
     .replace(/\./g, "");
   return `https://u.gg/lol/champions/${normalized}/build`;
 }
-
-export { DDRAGON_VERSION };
