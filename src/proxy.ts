@@ -4,6 +4,8 @@ import { getRedis } from "@/lib/redis";
 
 // Per-IP rate limit on the API routes so a single client can't drain the shared
 // Riot API key (A1). Disabled gracefully when Upstash/KV isn't configured.
+//
+// Next 16 renamed the `middleware` file convention to `proxy`.
 const redis = getRedis();
 const ratelimit = redis
   ? new Ratelimit({
@@ -18,7 +20,7 @@ export const config = {
   matcher: "/api/:path*",
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   if (!ratelimit) return NextResponse.next();
 
   const ip =
