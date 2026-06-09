@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { getItemIconUrl } from "@/lib/data-dragon";
 import { useDDragonVersion } from "./DDragonProvider";
 
@@ -23,7 +24,7 @@ export default function ItemIcon({ itemId, size = 32 }: Props) {
   }
 
   return (
-    <img
+    <Image
       src={getItemIconUrl(itemId, version)}
       alt={`Item de League of Legends (ID: ${itemId})`}
       width={size}
