@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Region, REGION_LABELS } from "@/lib/types";
+import { addRecent } from "@/lib/favorites";
 
 const regions = Object.entries(REGION_LABELS) as [Region, string][];
 
@@ -14,9 +15,12 @@ export default function SearchBar() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!gameName.trim() || !tagLine.trim()) return;
+    const name = gameName.trim();
+    const tag = tagLine.trim();
+    if (!name || !tag) return;
+    addRecent({ region, gameName: name, tagLine: tag });
     router.push(
-      `/summoner/${region}/${encodeURIComponent(gameName)}-${encodeURIComponent(tagLine)}`
+      `/summoner/${region}/${encodeURIComponent(name)}-${encodeURIComponent(tag)}`
     );
   }
 
