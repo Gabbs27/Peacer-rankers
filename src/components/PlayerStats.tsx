@@ -1,5 +1,6 @@
 import { LeagueEntry } from "@/lib/types";
 import { getProfileIconUrl } from "@/lib/data-dragon";
+import FavoriteButton from "./FavoriteButton";
 
 interface Props {
   ranked: LeagueEntry[];
@@ -7,6 +8,7 @@ interface Props {
   profileIconId: number;
   gameName: string;
   tagLine: string;
+  region: string;
   ddragonVersion: string;
 }
 
@@ -29,6 +31,7 @@ export default function PlayerStats({
   profileIconId,
   gameName,
   tagLine,
+  region,
   ddragonVersion,
 }: Props) {
   const soloQ = ranked.find((r) => r.queueType === "RANKED_SOLO_5x5");
@@ -76,10 +79,13 @@ export default function PlayerStats({
           className="rounded-full border-2 border-blue-500/50 sm:w-20 sm:h-20"
         />
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-3xl font-bold truncate">
-            {gameName}
-            <span className="text-gray-300 text-base sm:text-xl">#{tagLine}</span>
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-3xl font-bold truncate">
+              {gameName}
+              <span className="text-gray-300 text-base sm:text-xl">#{tagLine}</span>
+            </h1>
+            <FavoriteButton region={region} gameName={gameName} tagLine={tagLine} />
+          </div>
           <p className="text-gray-300 text-sm">Nivel {summonerLevel}</p>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import SearchBar from "@/components/SearchBar";
+import QuickAccess from "@/components/QuickAccess";
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
         </p>
       </div>
       <SearchBar />
+      <QuickAccess />
     </div>
   );
 }
