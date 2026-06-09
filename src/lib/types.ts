@@ -5,6 +5,18 @@ export interface RiotAccount {
   tagLine: string;
 }
 
+// Champion Mastery API (champion-mastery-v4)
+export interface ChampionMastery {
+  championId: number;
+  championLevel: number;
+  championPoints: number;
+  lastPlayTime: number;
+  championPointsSinceLastLevel: number;
+  championPointsUntilNextLevel: number;
+  chestGranted: boolean;
+  tokensEarned: number;
+}
+
 // Summoner API response
 export interface Summoner {
   id: string;

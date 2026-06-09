@@ -1,15 +1,17 @@
-import { unstable_cache } from "next/cache";
+import { z } from "zod";
 import {
   RiotAccount,
   Summoner,
   LeagueEntry,
   MatchData,
+  ChampionMastery,
   Region,
   REGION_TO_ROUTE,
   REGION_TO_ACCOUNT_ROUTE,
   isValidRegion,
   CurrentGameInfo,
 } from "./types";
+import { cached } from "./cache";
 
 const API_KEY = process.env.RIOT_API_KEY;
 
@@ -40,6 +42,8 @@ export class RiotApiError extends Error {
         return "No encontrado.";
       case 429:
         return "Demasiadas solicitudes a Riot. Intenta de nuevo en unos segundos.";
+      case 502:
+        return "Respuesta inesperada del servicio de Riot.";
       default:
         return this.status >= 500
           ? "El servicio de Riot no está disponible ahora mismo."
@@ -49,25 +53,50 @@ export class RiotApiError extends Error {
 }
 
 // Cache lifetimes (seconds), tuned to how mutable each resource is.
-// Caching is done with unstable_cache, which only stores SUCCESSFUL results —
-// a throw (404/429/5xx) is never cached.
 const TTL = {
   account: 60 * 60, // riot-id -> puuid almost never changes
   summoner: 10 * 60, // level / profile icon change slowly
   league: 5 * 60, // rank / LP
   matchIds: 60, // recent match list
   match: 24 * 60 * 60, // a finished match is immutable
+  mastery: 10 * 60, // mastery points change per game
 } as const;
 
 const MAX_RETRIES = 2;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// --- Runtime validation schemas (A9). We validate the fields we consume at the
+// network boundary, then return the original payload typed as T. A shape mismatch
+// (Riot changed a field) fails loudly here instead of deep inside scoring/render. ---
+const accountSchema = z.object({ puuid: z.string(), gameName: z.string(), tagLine: z.string() });
+const summonerSchema = z.object({ profileIconId: z.number(), summonerLevel: z.number() });
+const leagueEntriesSchema = z.array(
+  z.object({
+    queueType: z.string(),
+    tier: z.string(),
+    rank: z.string(),
+    leaguePoints: z.number(),
+    wins: z.number(),
+    losses: z.number(),
+  })
+);
+const matchIdsSchema = z.array(z.string());
+const matchSchema = z.object({
+  info: z.object({
+    gameDuration: z.number(),
+    participants: z.array(z.unknown()).min(1),
+  }),
+});
+const masterySchema = z.array(
+  z.object({ championId: z.number(), championLevel: z.number(), championPoints: z.number() })
+);
+
 /**
- * Raw Riot fetch. Caching is intentionally OFF here (`cache: "no-store"`) — the
- * unstable_cache wrappers below own persistence so that failures are never cached.
- * Handles 429 by honoring Retry-After with a bounded number of retries.
+ * Raw Riot fetch. Caching is owned by the cached() wrappers (so failures are never
+ * cached). Handles 429 by honoring Retry-After with a bounded number of retries, and
+ * optionally validates the payload shape with a zod schema.
  */
-async function fetchRiotRaw<T>(url: string): Promise<T> {
+async function fetchRiotRaw<T>(url: string, schema?: z.ZodType): Promise<T> {
   if (!API_KEY) {
     throw new RiotApiError("RIOT_API_KEY is not configured on the server", 500);
   }
@@ -87,14 +116,25 @@ async function fetchRiotRaw<T>(url: string): Promise<T> {
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      // Detailed, server-only message. Routes surface `publicMessage`, not this.
       throw new RiotApiError(
         `Riot API ${res.status} ${res.statusText} for ${url} :: ${body.slice(0, 300)}`,
         res.status
       );
     }
 
-    return (await res.json()) as T;
+    const data = await res.json();
+
+    if (schema) {
+      const result = schema.safeParse(data);
+      if (!result.success) {
+        throw new RiotApiError(
+          `Riot payload validation failed for ${url}: ${result.error.message.slice(0, 300)}`,
+          502
+        );
+      }
+    }
+
+    return data as T;
   }
 }
 
@@ -116,68 +156,35 @@ function accountHost(region: Region): string {
   return `https://${REGION_TO_ACCOUNT_ROUTE[region]}.api.riotgames.com`;
 }
 
-// --- Cached endpoint wrappers (unstable_cache keys on the function args automatically) ---
-
-const cachedAccount = unstable_cache(
-  (gameName: string, tagLine: string, region: Region) =>
-    fetchRiotRaw<RiotAccount>(
-      `${accountHost(region)}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`
-    ),
-  ["riot-account"],
-  { revalidate: TTL.account }
-);
-
-const cachedSummoner = unstable_cache(
-  (puuid: string, region: Region) =>
-    fetchRiotRaw<Summoner>(
-      `${platformHost(region)}/lol/summoner/v4/summoners/by-puuid/${encodeURIComponent(puuid)}`
-    ),
-  ["riot-summoner"],
-  { revalidate: TTL.summoner }
-);
-
-const cachedLeague = unstable_cache(
-  (puuid: string, region: Region) =>
-    fetchRiotRaw<LeagueEntry[]>(
-      `${platformHost(region)}/lol/league/v4/entries/by-puuid/${encodeURIComponent(puuid)}`
-    ),
-  ["riot-league"],
-  { revalidate: TTL.league }
-);
-
-const cachedMatchIds = unstable_cache(
-  (puuid: string, region: Region, count: number, start: number, queue?: number) => {
-    let url = `${matchHost(region)}/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?count=${count}&start=${start}`;
-    if (queue) url += `&queue=${queue}`;
-    return fetchRiotRaw<string[]>(url);
-  },
-  ["riot-match-ids"],
-  { revalidate: TTL.matchIds }
-);
-
-const cachedMatch = unstable_cache(
-  (matchId: string, region: Region) =>
-    fetchRiotRaw<MatchData>(
-      `${matchHost(region)}/lol/match/v5/matches/${encodeURIComponent(matchId)}`
-    ),
-  ["riot-match"],
-  { revalidate: TTL.match }
-);
-
 export async function getAccountByRiotId(
   gameName: string,
   tagLine: string,
   region: Region
 ): Promise<RiotAccount> {
-  return cachedAccount(gameName, tagLine, region);
+  return cached(["account", region, gameName, tagLine], TTL.account, () =>
+    fetchRiotRaw<RiotAccount>(
+      `${accountHost(region)}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
+      accountSchema
+    )
+  );
 }
 
 export async function getSummonerByPuuid(puuid: string, region: Region): Promise<Summoner> {
-  return cachedSummoner(puuid, region);
+  return cached(["summoner", region, puuid], TTL.summoner, () =>
+    fetchRiotRaw<Summoner>(
+      `${platformHost(region)}/lol/summoner/v4/summoners/by-puuid/${encodeURIComponent(puuid)}`,
+      summonerSchema
+    )
+  );
 }
 
 export async function getLeagueEntries(puuid: string, region: Region): Promise<LeagueEntry[]> {
-  return cachedLeague(puuid, region);
+  return cached(["league", region, puuid], TTL.league, () =>
+    fetchRiotRaw<LeagueEntry[]>(
+      `${platformHost(region)}/lol/league/v4/entries/by-puuid/${encodeURIComponent(puuid)}`,
+      leagueEntriesSchema
+    )
+  );
 }
 
 export async function getMatchIds(
@@ -187,11 +194,33 @@ export async function getMatchIds(
   start: number = 0,
   queue?: number
 ): Promise<string[]> {
-  return cachedMatchIds(puuid, region, count, start, queue);
+  return cached(["matchids", region, puuid, String(count), String(start), String(queue ?? "")], TTL.matchIds, () => {
+    let url = `${matchHost(region)}/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?count=${count}&start=${start}`;
+    if (queue) url += `&queue=${queue}`;
+    return fetchRiotRaw<string[]>(url, matchIdsSchema);
+  });
 }
 
 export async function getMatch(matchId: string, region: Region): Promise<MatchData> {
-  return cachedMatch(matchId, region);
+  return cached(["match", region, matchId], TTL.match, () =>
+    fetchRiotRaw<MatchData>(
+      `${matchHost(region)}/lol/match/v5/matches/${encodeURIComponent(matchId)}`,
+      matchSchema
+    )
+  );
+}
+
+export async function getChampionMastery(
+  puuid: string,
+  region: Region,
+  count: number = 10
+): Promise<ChampionMastery[]> {
+  return cached(["mastery", region, puuid, String(count)], TTL.mastery, () =>
+    fetchRiotRaw<ChampionMastery[]>(
+      `${platformHost(region)}/lol/champion-mastery/v4/champion-masteries/by-puuid/${encodeURIComponent(puuid)}/top?count=${count}`,
+      masterySchema
+    )
+  );
 }
 
 export async function getCurrentGame(
