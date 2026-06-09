@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MatchData } from "@/lib/types";
 import { getChampionIconUrl, formatDuration } from "@/lib/data-dragon";
 import { calculatePerformanceScore } from "@/lib/scoring";
+import { useDDragonVersion } from "./DDragonProvider";
 
 const REMAKE_THRESHOLD = 300; // 5 minutes in seconds
 
@@ -54,6 +55,7 @@ interface CategorizedFeedback {
 }
 
 export default function MatchOverview({ matches, puuid }: Props) {
+  const ddragonVersion = useDDragonVersion();
   const [showChampions, setShowChampions] = useState(true);
   const [showFeedback, setShowFeedback] = useState(true);
   const [expandedChamp, setExpandedChamp] = useState<string | null>(null);
@@ -120,7 +122,7 @@ export default function MatchOverview({ matches, puuid }: Props) {
 
   // Win streaks / loss streaks
   let currentStreak = 0;
-  let streakType: "win" | "loss" = playerMatches[0]?.player?.win ? "win" : "loss";
+  const streakType: "win" | "loss" = playerMatches[0]?.player?.win ? "win" : "loss";
   for (const m of playerMatches) {
     if (m.player!.win && streakType === "win") currentStreak++;
     else if (!m.player!.win && streakType === "loss") currentStreak++;
@@ -355,7 +357,7 @@ export default function MatchOverview({ matches, puuid }: Props) {
                     className="w-full flex items-center gap-3 bg-gray-700/40 rounded-lg p-3 hover:bg-gray-700/60 transition-colors text-left"
                   >
                     <img
-                      src={getChampionIconUrl(champ.championName)}
+                      src={getChampionIconUrl(champ.championName, ddragonVersion)}
                       alt={champ.championName}
                       width={44}
                       height={44}

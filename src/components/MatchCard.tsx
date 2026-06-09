@@ -11,9 +11,10 @@ import {
   getSummonerSpellIconUrl,
   getMobafireSearchUrl,
   getUGGChampionUrl,
+  getItemIconUrl,
 } from "@/lib/data-dragon";
 import { generateTips, generateTeamAnalysis } from "@/lib/tips";
-import { calculatePerformanceScore } from "@/lib/scoring";
+import { calculatePerformanceScore, isRemake } from "@/lib/scoring";
 import { analyzeEnemyTeam, getDefensiveRecommendations, analyzeBuildEfficiency } from "@/lib/builds";
 import ChampionIcon from "./ChampionIcon";
 import ItemIcon from "./ItemIcon";
@@ -21,7 +22,7 @@ import TipsBadge from "./TipsBadge";
 import PerformanceScoreComponent from "./PerformanceScore";
 import BuildRecommendationComponent from "./BuildRecommendation";
 import { getBriarMatchup, getBriarBuildForComp, BRIAR_TIPS } from "@/lib/briar-guide";
-import { getItemIconUrl } from "@/lib/data-dragon";
+import { useDDragonVersion } from "./DDragonProvider";
 
 interface Props {
   match: MatchData;
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export default function MatchCard({ match, puuid, ranked }: Props) {
+  const ddragonVersion = useDDragonVersion();
   const [expanded, setExpanded] = useState(false);
   const player = match.info.participants.find((p) => p.puuid === puuid);
 
@@ -37,7 +39,9 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
 
   const tips = generateTips(player, match.info);
   const teamTips = generateTeamAnalysis(player.teamId, match.info);
-  const perfScore = calculatePerformanceScore(player, match.info);
+  const remake = isRemake(match.info);
+  // Remakes are too short to evaluate — scoring them yields inflated (clamped) numbers (M2).
+  const perfScore = remake ? null : calculatePerformanceScore(player, match.info);
   const soloQ = ranked?.find((r) => r.queueType === "RANKED_SOLO_5x5")
     || ranked?.find((r) => r.queueType === "RANKED_FLEX_SR");
   const enemyAnalysis = analyzeEnemyTeam(match.info, player.teamId);
@@ -62,11 +66,10 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
   );
 
   // Find worst teammate (exclude self) — only for non-remakes
-  const isRemake = match.info.gameDuration < 300;
   const allies = match.info.participants.filter(
     (p) => p.teamId === player.teamId && p.puuid !== puuid
   );
-  const worstAlly = !isRemake && allies.length > 0 ? findWorstTeammate(allies, match.info.gameDuration) : null;
+  const worstAlly = !remake && allies.length > 0 ? findWorstTeammate(allies, match.info.gameDuration) : null;
 
   return (
     <article
@@ -101,14 +104,14 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
           </div>
           <div className="flex flex-col gap-0.5 hidden sm:flex">
             <img
-              src={getSummonerSpellIconUrl(player.summoner1Id)}
+              src={getSummonerSpellIconUrl(player.summoner1Id, ddragonVersion)}
               alt="Spell 1"
               width={18}
               height={18}
               className="rounded"
             />
             <img
-              src={getSummonerSpellIconUrl(player.summoner2Id)}
+              src={getSummonerSpellIconUrl(player.summoner2Id, ddragonVersion)}
               alt="Spell 2"
               width={18}
               height={18}
@@ -189,11 +192,17 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
       {expanded && (
         <section aria-label="Detalles de la partida" className="border-t border-gray-600 p-4 space-y-4">
           {/* Performance Score */}
-          <PerformanceScoreComponent
-            score={perfScore}
-            actualTier={soloQ?.tier}
-            actualRank={soloQ?.rank}
-          />
+          {perfScore ? (
+            <PerformanceScoreComponent
+              score={perfScore}
+              actualTier={soloQ?.tier}
+              actualRank={soloQ?.rank}
+            />
+          ) : (
+            <div className="rounded-lg border border-gray-600 bg-gray-700/30 p-3 text-sm text-gray-300">
+              Partida demasiado corta (remake) — sin puntuación de rendimiento.
+            </div>
+          )}
 
           {/* Personal Tips */}
           {tips.length > 0 && (
@@ -212,7 +221,7 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
           {/* Match info bar */}
           <div className="flex items-center gap-3 mb-4 p-3 bg-gray-700/30 rounded-lg">
             <img
-              src={getMapImageUrl(match.info.mapId)}
+              src={getMapImageUrl(match.info.mapId, ddragonVersion)}
               alt={getMapName(match.info.mapId)}
               width={48}
               height={48}
@@ -468,6 +477,7 @@ function ObjectiveStat({
 }
 
 function BriarGuideSection({ enemies }: { enemies: { championName: string }[] }) {
+  const ddragonVersion = useDDragonVersion();
   const [showGuide, setShowGuide] = useState(false);
   const enemyNames = enemies.map((e) => e.championName);
   const recBuild = getBriarBuildForComp(enemyNames);
@@ -499,7 +509,7 @@ function BriarGuideSection({ enemies }: { enemies: { championName: string }[] })
           {recBuild.items.map((item) => (
             <img
               key={item.itemId}
-              src={getItemIconUrl(item.itemId)}
+              src={getItemIconUrl(item.itemId, ddragonVersion)}
               alt={item.name}
               width={28}
               height={28}

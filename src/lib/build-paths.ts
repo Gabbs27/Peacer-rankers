@@ -1,5 +1,7 @@
 // Build path recommendation engine based on champion type and enemy composition
 
+import { getChampionDamageType, normalizeChampionName } from "./champion-data";
+
 export interface BuildPath {
   starter: { name: string; itemId: number }[];
   boots: { name: string; itemId: number; reason: string };
@@ -81,51 +83,9 @@ const BUILD_ARCHETYPES: Record<string, BuildArchetype> = {
 };
 
 function getArchetype(championName: string): BuildArchetype {
-  return BUILD_ARCHETYPES[championName] || "ad_bruiser";
+  // Normalize first so Data Dragon ids (e.g. "Kaisa", "MonkeyKing") match the map keys (M3).
+  return BUILD_ARCHETYPES[normalizeChampionName(championName)] || "ad_bruiser";
 }
-
-// Damage type for enemy comp analysis
-type DamageType = "AP" | "AD" | "TANK" | "HYBRID";
-
-const CHAMPION_DAMAGE: Record<string, DamageType> = {
-  Ahri: "AP", Akali: "AP", Anivia: "AP", Annie: "AP", AurelionSol: "AP",
-  Aurora: "AP", Azir: "AP", Brand: "AP", Cassiopeia: "AP", Diana: "AP",
-  Ekko: "AP", Elise: "AP", Evelynn: "AP", Fiddlesticks: "AP", Fizz: "AP",
-  Gragas: "AP", Hwei: "AP", Ivern: "AP", Karma: "AP", Karthus: "AP",
-  Kassadin: "AP", Katarina: "AP", Kennen: "AP", Leblanc: "AP", Lillia: "AP",
-  Lissandra: "AP", Lulu: "AP", Lux: "AP", Malzahar: "AP", Morgana: "AP",
-  Nami: "AP", Neeko: "AP", Nidalee: "AP", Orianna: "AP", Rumble: "AP",
-  Ryze: "AP", Seraphine: "AP", Shaco: "AP", Sona: "AP", Soraka: "AP",
-  Swain: "AP", Syndra: "AP", Taliyah: "AP", Teemo: "AP", TwistedFate: "AP",
-  Veigar: "AP", Velkoz: "AP", Vex: "AP", Viktor: "AP", Vladimir: "AP",
-  Xerath: "AP", Ziggs: "AP", Zilean: "AP", Zoe: "AP", Zyra: "AP",
-  Sylas: "AP", Smolder: "AP", Naafiri: "AP", Milio: "AP", Renata: "AP",
-  Gwen: "AP", Briar: "AD", Belveth: "AD", Nilah: "AD", Zeri: "AD",
-  Viego: "AD", Yone: "HYBRID", Samira: "AD", Rell: "TANK",
-  Aatrox: "AD", Camille: "AD", Darius: "AD", Draven: "AD", Fiora: "AD",
-  Gangplank: "AD", Garen: "AD", Hecarim: "AD", Illaoi: "AD", Irelia: "AD",
-  JarvanIV: "AD", Jax: "HYBRID", Jayce: "AD", Kayn: "AD", Khazix: "AD",
-  Kled: "AD", LeeSin: "AD", MasterYi: "AD", Nocturne: "AD", Olaf: "AD",
-  Pantheon: "AD", Pyke: "AD", Qiyana: "AD", RekSai: "AD", Renekton: "AD",
-  Rengar: "AD", Riven: "AD", Sett: "AD", Talon: "AD", Tryndamere: "AD",
-  Udyr: "AD", Urgot: "AD", Vi: "AD", Warwick: "AD", Wukong: "AD",
-  XinZhao: "AD", Yasuo: "AD", Zed: "AD", Ambessa: "AD",
-  Aphelios: "AD", Ashe: "AD", Caitlyn: "AD", Corki: "HYBRID", Ezreal: "HYBRID",
-  Jhin: "AD", Jinx: "AD", KaiSa: "HYBRID", Kalista: "AD", Kindred: "AD",
-  KogMaw: "HYBRID", Lucian: "AD", MissFortune: "AD", Quinn: "AD",
-  Sivir: "AD", Tristana: "AD", Twitch: "AD", Varus: "HYBRID", Vayne: "AD",
-  Xayah: "AD",
-  Alistar: "TANK", Amumu: "TANK", Blitzcrank: "TANK", Braum: "TANK",
-  Chogath: "AP", DrMundo: "TANK", Galio: "AP", Leona: "TANK",
-  Malphite: "TANK", Maokai: "TANK", Nautilus: "TANK", Nunu: "AP",
-  Ornn: "TANK", Poppy: "TANK", Rammus: "TANK", Sejuani: "TANK",
-  Shen: "TANK", Singed: "AP", Sion: "TANK", TahmKench: "TANK",
-  Taric: "TANK", Thresh: "TANK", Volibear: "HYBRID", Yorick: "AD",
-  Zac: "AP", KSante: "TANK",
-  Bard: "AP", Heimerdinger: "AP", Janna: "AP", Kayle: "HYBRID",
-  Mordekaiser: "AP", Nasus: "AD", Rakan: "AP", Senna: "AD",
-  Shyvana: "HYBRID", Trundle: "AD", Yuumi: "AP",
-};
 
 interface CompSummary {
   apCount: number;
@@ -142,7 +102,7 @@ function analyzeComp(enemyChampions: string[]): CompSummary {
   let tankCount = 0;
 
   enemyChampions.forEach((name) => {
-    const type = CHAMPION_DAMAGE[name] || "AD";
+    const type = getChampionDamageType(name);
     switch (type) {
       case "AP": apCount++; break;
       case "AD": adCount++; break;
