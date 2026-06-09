@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { getChampionIconUrl } from "@/lib/data-dragon";
 import { useDDragonVersion } from "./DDragonProvider";
 
@@ -16,7 +17,7 @@ export default function ChampionIcon({
 }: Props) {
   const version = useDDragonVersion();
   return (
-    <img
+    <Image
       src={getChampionIconUrl(championName, version)}
       alt={`Campeón ${championName}`}
       width={size}
