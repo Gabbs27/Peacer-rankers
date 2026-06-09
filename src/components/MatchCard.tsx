@@ -23,14 +23,16 @@ import PerformanceScoreComponent from "./PerformanceScore";
 import BuildRecommendationComponent from "./BuildRecommendation";
 import { getBriarMatchup, getBriarBuildForComp, BRIAR_TIPS } from "@/lib/briar-guide";
 import { useDDragonVersion } from "./DDragonProvider";
+import TimelineSection from "./TimelineSection";
 
 interface Props {
   match: MatchData;
   puuid: string;
+  region: string;
   ranked?: LeagueEntry[];
 }
 
-export default function MatchCard({ match, puuid, ranked }: Props) {
+export default function MatchCard({ match, puuid, region, ranked }: Props) {
   const ddragonVersion = useDDragonVersion();
   const [expanded, setExpanded] = useState(false);
   const player = match.info.participants.find((p) => p.puuid === puuid);
@@ -216,6 +218,15 @@ export default function MatchCard({ match, puuid, ranked }: Props) {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Timeline insights (lazy: fetched only when this card is expanded) */}
+          {!remake && (
+            <TimelineSection
+              matchId={match.metadata.matchId}
+              region={region}
+              puuid={puuid}
+            />
           )}
 
           {/* Match info bar */}
