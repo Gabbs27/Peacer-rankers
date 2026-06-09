@@ -1,92 +1,13 @@
 import { MatchParticipant, MatchInfo } from "./types";
-
-// Champion damage type classification
-// AP = ability power, AD = attack damage, TANK = primarily tank, HYBRID = mixed
-type DamageType = "AP" | "AD" | "TANK" | "HYBRID";
-
-// Normalize champion names from Riot API to our map keys
-const NAME_ALIASES: Record<string, string> = {
-  MonkeyKing: "Wukong",
-  FiddleSticks: "Fiddlesticks",
-  "Nunu & Willump": "Nunu",
-  NunuWillump: "Nunu",
-  "Dr. Mundo": "DrMundo",
-  "Cho'Gath": "Chogath",
-  "Bel'Veth": "Belveth",
-  "K'Sante": "KSante",
-  "Kog'Maw": "KogMaw",
-  "Kai'Sa": "KaiSa",
-  "Kha'Zix": "Khazix",
-  "Rek'Sai": "RekSai",
-  "Vel'Koz": "Velkoz",
-  "Xin Zhao": "XinZhao",
-  "Jarvan IV": "JarvanIV",
-  "Master Yi": "MasterYi",
-  "Miss Fortune": "MissFortune",
-  "Tahm Kench": "TahmKench",
-  "Aurelion Sol": "AurelionSol",
-  "Twisted Fate": "TwistedFate",
-  "Lee Sin": "LeeSin",
-};
-
-function normalizeChampionName(name: string): string {
-  if (NAME_ALIASES[name]) return NAME_ALIASES[name];
-  // Remove spaces, apostrophes, dots for lookup
-  return name.replace(/[\s'.]/g, "");
-}
-
-const CHAMPION_TYPES: Record<string, DamageType> = {
-  // AP mages & AP assassins
-  Ahri: "AP", Akali: "AP", Anivia: "AP", Annie: "AP", AurelionSol: "AP",
-  Aurora: "AP", Azir: "AP", Brand: "AP", Cassiopeia: "AP", Diana: "AP",
-  Ekko: "AP", Elise: "AP", Evelynn: "AP", Fiddlesticks: "AP", Fizz: "AP",
-  Gragas: "AP", Hwei: "AP", Ivern: "AP", Karma: "AP", Karthus: "AP",
-  Kassadin: "AP", Katarina: "AP", Kennen: "AP", Leblanc: "AP", Lillia: "AP",
-  Lissandra: "AP", Lulu: "AP", Lux: "AP", Malzahar: "AP", Morgana: "AP",
-  Nami: "AP", Neeko: "AP", Nidalee: "AP", Orianna: "AP", Rumble: "AP",
-  Ryze: "AP", Seraphine: "AP", Shaco: "AP", Sona: "AP", Soraka: "AP",
-  Swain: "AP", Syndra: "AP", Taliyah: "AP", Teemo: "AP", TwistedFate: "AP",
-  Veigar: "AP", Velkoz: "AP", Vex: "AP", Viktor: "AP", Vladimir: "AP",
-  Xerath: "AP", Ziggs: "AP", Zilean: "AP", Zoe: "AP", Zyra: "AP",
-  Sylas: "AP", Smolder: "AP", Naafiri: "AD", Milio: "AP", Briar: "AD",
-  Belveth: "AD", Nilah: "AD", Zeri: "AD", Renata: "AP", Viego: "AD",
-  Gwen: "AP", Yone: "HYBRID", Samira: "AD", Rell: "TANK",
-
-  // AD fighters & assassins
-  Aatrox: "AD", Camille: "AD", Darius: "AD", Draven: "AD", Fiora: "AD",
-  Gangplank: "AD", Garen: "AD", Hecarim: "AD", Illaoi: "AD", Irelia: "AD",
-  JarvanIV: "AD", Jax: "HYBRID", Jayce: "AD", Kayn: "AD", Khazix: "AD",
-  Kled: "AD", LeeSin: "AD", MasterYi: "AD", Nocturne: "AD", Olaf: "AD",
-  Pantheon: "AD", Pyke: "AD", Qiyana: "AD", RekSai: "AD", Renekton: "AD",
-  Rengar: "AD", Riven: "AD", Sett: "AD", Talon: "AD", Tryndamere: "AD",
-  Udyr: "AD", Urgot: "AD", Vi: "AD", Warwick: "AD", Wukong: "AD",
-  XinZhao: "AD", Yasuo: "AD", Zed: "AD", Ambessa: "AD",
-
-  // ADCs
-  Aphelios: "AD", Ashe: "AD", Caitlyn: "AD", Corki: "HYBRID", Ezreal: "HYBRID",
-  Jhin: "AD", Jinx: "AD", KaiSa: "HYBRID", Kalista: "AD", Kindred: "AD",
-  KogMaw: "HYBRID", Lucian: "AD", MissFortune: "AD", Quinn: "AD",
-  Sivir: "AD", Tristana: "AD", Twitch: "AD", Varus: "HYBRID", Vayne: "AD",
-  Xayah: "AD",
-
-  // Tanks
-  Alistar: "TANK", Amumu: "TANK", Blitzcrank: "TANK", Braum: "TANK",
-  Chogath: "AP", DrMundo: "TANK", Galio: "AP", Leona: "TANK",
-  Malphite: "TANK", Maokai: "TANK", Nautilus: "TANK", Nunu: "AP",
-  Ornn: "TANK", Poppy: "TANK", Rammus: "TANK", Sejuani: "TANK",
-  Shen: "TANK", Singed: "AP", Sion: "TANK", TahmKench: "TANK",
-  Taric: "TANK", Thresh: "TANK", Volibear: "HYBRID", Yorick: "AD",
-  Zac: "AP", KSante: "TANK",
-
-  // Others
-  Bard: "AP", Heimerdinger: "AP", Janna: "AP", Kayle: "HYBRID",
-  Mordekaiser: "AP", Nasus: "AD", Rakan: "AP", Senna: "AD",
-  Shyvana: "HYBRID", Trundle: "AD", Yuumi: "AP",
-};
+import {
+  DamageType,
+  normalizeChampionName,
+  CHAMPION_DAMAGE,
+  getChampionDamageType,
+} from "./champion-data";
 
 export function getChampionType(championName: string): DamageType {
-  const normalized = normalizeChampionName(championName);
-  return CHAMPION_TYPES[normalized] || "AD";
+  return getChampionDamageType(championName);
 }
 
 // Classify champion based on actual match damage data (fallback when not in map)
@@ -108,7 +29,7 @@ function getChampionTypeFromMatchData(p: MatchParticipant): DamageType {
 // Get champion type, using match data as fallback for unknown champions
 function getChampionTypeWithFallback(championName: string, participant?: MatchParticipant): DamageType {
   const normalized = normalizeChampionName(championName);
-  if (CHAMPION_TYPES[normalized]) return CHAMPION_TYPES[normalized];
+  if (CHAMPION_DAMAGE[normalized]) return CHAMPION_DAMAGE[normalized];
   if (participant) return getChampionTypeFromMatchData(participant);
   return "AD";
 }

@@ -124,6 +124,7 @@ export default function SummonerContent({ initialMatches, puuid, region, ranked 
               key={match.metadata.matchId}
               match={match}
               puuid={puuid}
+              region={region}
               ranked={ranked}
             />
           ))}

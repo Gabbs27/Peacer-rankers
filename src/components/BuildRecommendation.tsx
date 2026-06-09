@@ -2,6 +2,7 @@
 
 import { BuildRecommendation as BuildRecType, TeamAnalysis } from "@/lib/builds";
 import { getItemIconUrl, getUGGChampionUrl } from "@/lib/data-dragon";
+import { useDDragonVersion } from "./DDragonProvider";
 
 interface Props {
   recommendation: BuildRecType;
@@ -17,6 +18,7 @@ const verdictColors = {
 };
 
 export default function BuildRecommendation({ recommendation, analysis, buildVerdict, championName }: Props) {
+  const ddragonVersion = useDDragonVersion();
   const totalDisplayed = analysis.apCount + analysis.adCount + analysis.tankCount;
 
   return (
@@ -82,7 +84,7 @@ export default function BuildRecommendation({ recommendation, analysis, buildVer
                 className="flex items-center gap-2 bg-gray-800/60 rounded-lg p-2.5"
               >
                 <img
-                  src={getItemIconUrl(item.itemId)}
+                  src={getItemIconUrl(item.itemId, ddragonVersion)}
                   alt={item.name}
                   width={32}
                   height={32}

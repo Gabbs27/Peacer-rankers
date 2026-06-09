@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { getChampionIconUrl, getItemIconUrl, getMobafireSearchUrl, getUGGChampionUrl } from "@/lib/data-dragon";
+import { getChampionIconUrl, getItemIconUrl, getMobafireSearchUrl, getUGGChampionUrl, getChampionDataUrl } from "@/lib/data-dragon";
 import { getRuneRecommendation } from "@/lib/runes";
 import { getBuildPath } from "@/lib/build-paths";
+import { getChampionDamageType } from "@/lib/champion-data";
+import { useDDragonVersion } from "@/components/DDragonProvider";
 import type { RuneRecommendation } from "@/lib/runes";
 import type { BuildPath } from "@/lib/build-paths";
 
@@ -21,41 +23,20 @@ const ROLES = [
   { key: "SUP", label: "SUP" },
 ];
 
-// Simple enemy comp analysis for display
+// Simple enemy comp analysis for display, using the canonical champion damage map.
 function analyzeEnemyDisplay(enemies: ChampionData[]) {
-  const DAMAGE: Record<string, string> = {
-    Ahri: "AP", Akali: "AP", Anivia: "AP", Annie: "AP", AurelionSol: "AP",
-    Aurora: "AP", Azir: "AP", Brand: "AP", Cassiopeia: "AP", Diana: "AP",
-    Ekko: "AP", Elise: "AP", Evelynn: "AP", Fiddlesticks: "AP", Fizz: "AP",
-    Gragas: "AP", Hwei: "AP", Ivern: "AP", Karma: "AP", Karthus: "AP",
-    Kassadin: "AP", Katarina: "AP", Kennen: "AP", Leblanc: "AP", Lillia: "AP",
-    Lissandra: "AP", Lulu: "AP", Lux: "AP", Malzahar: "AP", Morgana: "AP",
-    Nami: "AP", Neeko: "AP", Nidalee: "AP", Orianna: "AP", Rumble: "AP",
-    Ryze: "AP", Seraphine: "AP", Sona: "AP", Soraka: "AP", Swain: "AP",
-    Syndra: "AP", Taliyah: "AP", Teemo: "AP", TwistedFate: "AP",
-    Veigar: "AP", Velkoz: "AP", Vex: "AP", Viktor: "AP", Vladimir: "AP",
-    Xerath: "AP", Ziggs: "AP", Zilean: "AP", Zoe: "AP", Zyra: "AP",
-    Sylas: "AP", Smolder: "AP", Milio: "AP", Renata: "AP", Gwen: "AP",
-    Mordekaiser: "AP", Singed: "AP", Heimerdinger: "AP",
-    Alistar: "TANK", Amumu: "TANK", Blitzcrank: "TANK", Braum: "TANK",
-    DrMundo: "TANK", Leona: "TANK", Malphite: "TANK", Maokai: "TANK",
-    Nautilus: "TANK", Ornn: "TANK", Poppy: "TANK", Rammus: "TANK",
-    Sejuani: "TANK", Shen: "TANK", Sion: "TANK", TahmKench: "TANK",
-    Taric: "TANK", Thresh: "TANK", KSante: "TANK", Ksante: "TANK",
-    Rell: "TANK", Zac: "AP", Chogath: "AP", Galio: "AP", Nunu: "AP",
-  };
-
   let ap = 0, ad = 0, tank = 0;
   enemies.forEach((e) => {
-    const t = DAMAGE[e.id] || "AD";
+    const t = getChampionDamageType(e.id);
     if (t === "AP") ap++;
     else if (t === "TANK") tank++;
-    else ad++;
+    else ad++; // AD and HYBRID count toward AD for this rough display
   });
   return { ap, ad, tank };
 }
 
 export default function PlannerPage() {
+  const ddragonVersion = useDDragonVersion();
   const [champions, setChampions] = useState<ChampionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -65,7 +46,7 @@ export default function PlannerPage() {
   const [pickingMode, setPickingMode] = useState<"player" | "enemy">("player");
 
   useEffect(() => {
-    fetch("https://ddragon.leagueoflegends.com/cdn/16.6.1/data/es_MX/champion.json")
+    fetch(getChampionDataUrl(ddragonVersion, "es_MX"))
       .then((res) => res.json())
       .then((data) => {
         const champs = Object.values(data.data) as ChampionData[];
@@ -74,7 +55,7 @@ export default function PlannerPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [ddragonVersion]);
 
   const filtered = useMemo(
     () =>
@@ -149,7 +130,7 @@ export default function PlannerPage() {
             {selectedChampion ? (
               <div className="flex items-center gap-2">
                 <img
-                  src={getChampionIconUrl(selectedChampion.id)}
+                  src={getChampionIconUrl(selectedChampion.id, ddragonVersion)}
                   alt={selectedChampion.name}
                   width={40}
                   height={40}
@@ -208,7 +189,7 @@ export default function PlannerPage() {
                     title={`Quitar ${enemy.name}`}
                   >
                     <img
-                      src={getChampionIconUrl(enemy.id)}
+                      src={getChampionIconUrl(enemy.id, ddragonVersion)}
                       alt={enemy.name}
                       width={32}
                       height={32}
@@ -303,7 +284,7 @@ export default function PlannerPage() {
                   }`}
                 >
                   <img
-                    src={getChampionIconUrl(champ.id)}
+                    src={getChampionIconUrl(champ.id, ddragonVersion)}
                     alt={champ.name}
                     width={44}
                     height={44}
@@ -385,7 +366,7 @@ export default function PlannerPage() {
                   {build.starter.map((item, i) => (
                     <div key={i} className="flex items-center gap-1.5">
                       <img
-                        src={getItemIconUrl(item.itemId)}
+                        src={getItemIconUrl(item.itemId, ddragonVersion)}
                         alt={item.name}
                         width={28}
                         height={28}
@@ -402,7 +383,7 @@ export default function PlannerPage() {
                 <span className="text-xs text-gray-500 uppercase font-semibold">Botas</span>
                 <div className="flex items-center gap-2 mt-1">
                   <img
-                    src={getItemIconUrl(build.boots.itemId)}
+                    src={getItemIconUrl(build.boots.itemId, ddragonVersion)}
                     alt={build.boots.name}
                     width={28}
                     height={28}
@@ -420,7 +401,7 @@ export default function PlannerPage() {
                   {build.core.map((item, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <img
-                        src={getItemIconUrl(item.itemId)}
+                        src={getItemIconUrl(item.itemId, ddragonVersion)}
                         alt={item.name}
                         width={28}
                         height={28}
@@ -441,7 +422,7 @@ export default function PlannerPage() {
                     {build.situational.map((item, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <img
-                          src={getItemIconUrl(item.itemId)}
+                          src={getItemIconUrl(item.itemId, ddragonVersion)}
                           alt={item.name}
                           width={28}
                           height={28}
