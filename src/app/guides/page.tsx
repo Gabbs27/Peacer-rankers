@@ -37,7 +37,7 @@ export default function GuidesPage() {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold mb-2">
+        <h1 className="font-display text-3xl font-bold mb-2 text-[#f0e6d2]">
           Guías de <span className="text-orange-400">Campeones</span>
         </h1>
         <p className="text-gray-300">

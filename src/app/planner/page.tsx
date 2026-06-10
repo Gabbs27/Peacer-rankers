@@ -113,7 +113,7 @@ export default function PlannerPage() {
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold mb-2">
+        <h1 className="font-display text-3xl font-bold mb-2 text-[#f0e6d2]">
           Planificador <span className="text-orange-400">Pre-Game</span>
         </h1>
         <p className="text-gray-300">
