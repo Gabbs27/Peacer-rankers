@@ -1,5 +1,138 @@
 @import "tailwindcss";
 
+/* ============================================================
+   HEXTECH NOIR — design tokens
+   The whole app uses Tailwind gray-* utilities; we re-map that
+   scale to blue-tinted "ink" tones so every existing component
+   adopts the palette coherently. Gold + arcane teal are the two
+   accents, used sparingly.
+   ============================================================ */
+@theme {
+  --color-gray-50: #f4f6fa;
+  --color-gray-100: #e8ebf3;
+  --color-gray-200: #d3d9e6;
+  --color-gray-300: #b4bdd1;
+  --color-gray-400: #8b96ad;
+  --color-gray-500: #5b6880;
+  --color-gray-600: #2e3a54;
+  --color-gray-700: #1b2438;
+  --color-gray-800: #121a2c;
+  --color-gray-900: #0b1120;
+  --color-gray-950: #060a14;
+
+  --color-gold-100: #f0e6d2; /* LoL parchment */
+  --color-gold-400: #e3c98a;
+  --color-gold-500: #c8aa6e; /* hextech gold */
+  --color-gold-700: #785a28;
+
+  --color-arcane-400: #2ee6d6; /* hextech magic teal */
+  --color-arcane-500: #0ac8b9;
+}
+
+:root {
+  --font-body: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cinzel), serif;
+}
+
+/* ---------- Atmosphere ---------- */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-body);
+  background-color: var(--color-gray-950);
+  background-image:
+    radial-gradient(1100px 520px at 12% -8%, rgba(200, 170, 110, 0.08), transparent 60%),
+    radial-gradient(900px 640px at 108% 112%, rgba(10, 200, 185, 0.07), transparent 55%),
+    radial-gradient(720px 420px at 85% -6%, rgba(96, 165, 250, 0.05), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Subtle grain so flat areas don't feel sterile */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: rgba(200, 170, 110, 0.35);
+  color: #f0e6d2;
+}
+
+/* ---------- Typography ---------- */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+/* Section heading with a hextech gold rule */
+.section-title {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.section-title::before {
+  content: "";
+  width: 4px;
+  height: 1.05em;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--color-gold-100), var(--color-gold-500) 55%, var(--color-gold-700));
+}
+
+/* ---------- Panels ---------- */
+.panel {
+  position: relative;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(200, 170, 110, 0.14);
+  background: linear-gradient(165deg, rgba(27, 36, 56, 0.66), rgba(11, 17, 32, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(240, 230, 210, 0.05),
+    0 12px 32px -20px rgba(0, 0, 0, 0.9);
+}
+
+.panel-glow {
+  border-color: rgba(10, 200, 185, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(240, 230, 210, 0.05),
+    0 0 24px -8px rgba(10, 200, 185, 0.25);
+}
+
+/* ---------- Motion (staggered reveal) ---------- */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rise-2 { animation-delay: 0.07s; }
+.rise-3 { animation-delay: 0.14s; }
+.rise-4 { animation-delay: 0.21s; }
+.rise-5 { animation-delay: 0.28s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .rise-2, .rise-3, .rise-4, .rise-5 {
+    animation: none;
+  }
+  .collapse-transition {
+    transition: none;
+  }
+}
+
+/* ---------- Chrome ---------- */
 @layer base {
   .skip-link {
     @apply absolute -top-10 left-4 bg-blue-600 text-white px-4 py-2 rounded z-50 transition-all;
@@ -11,7 +144,7 @@
 
 @layer utilities {
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0ac8b9] focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900;
   }
 }
 
@@ -30,7 +163,7 @@
 
 /* Focus ring for keyboard navigation */
 *:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #0ac8b9;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -40,10 +173,21 @@
   transition: all 0.2s ease-in-out;
 }
 
-/* Minimum readable font */
-body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Thin hextech scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-gray-950);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3a3422, #785a28);
+  border-radius: 8px;
+  border: 2px solid var(--color-gray-950);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c8aa6e;
 }
 
 /* Ensure minimum touch target size */

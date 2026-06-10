@@ -17,6 +17,19 @@ export interface ChampionMastery {
   tokensEarned: number;
 }
 
+// Challenges API (lol-challenges-v1 player-data)
+export interface ChallengePoints {
+  level: string; // IRON..CHALLENGER, NONE
+  current: number;
+  max: number;
+  percentile?: number;
+}
+
+export interface PlayerChallenges {
+  totalPoints: ChallengePoints;
+  categoryPoints: Record<string, ChallengePoints>;
+}
+
 // Summoner API response
 export interface Summoner {
   id: string;

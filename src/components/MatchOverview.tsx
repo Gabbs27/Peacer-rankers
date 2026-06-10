@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { MatchData } from "@/lib/types";
 import { getChampionIconUrl, formatDuration } from "@/lib/data-dragon";
-import { calculatePerformanceScore } from "@/lib/scoring";
+import { calculatePerformanceScore, REMAKE_THRESHOLD_SECONDS } from "@/lib/scoring";
 import { useDDragonVersion } from "./DDragonProvider";
 
-const REMAKE_THRESHOLD = 300; // 5 minutes in seconds
+const REMAKE_THRESHOLD = REMAKE_THRESHOLD_SECONDS;
 
 interface Props {
   matches: MatchData[];
   puuid: string;
+  profileHref?: string;
 }
 
 interface MatchDetail {
@@ -54,7 +56,7 @@ interface CategorizedFeedback {
   bad: FeedbackItem[];
 }
 
-export default function MatchOverview({ matches, puuid }: Props) {
+export default function MatchOverview({ matches, puuid, profileHref }: Props) {
   const ddragonVersion = useDDragonVersion();
   const [showChampions, setShowChampions] = useState(true);
   const [showFeedback, setShowFeedback] = useState(true);
@@ -84,7 +86,7 @@ export default function MatchOverview({ matches, puuid }: Props) {
   const totalKills = playerMatches.reduce((s, m) => s + m.player!.kills, 0);
   const totalDeaths = playerMatches.reduce((s, m) => s + m.player!.deaths, 0);
   const totalAssists = playerMatches.reduce((s, m) => s + m.player!.assists, 0);
-  const avgKDA = totalDeaths === 0 ? "Perfect" : ((totalKills + totalAssists) / totalDeaths).toFixed(2);
+  const avgKDA = totalDeaths === 0 ? "Perfecto" : ((totalKills + totalAssists) / totalDeaths).toFixed(2);
 
   const totalCS = playerMatches.reduce((s, m) => s + m.player!.totalMinionsKilled + m.player!.neutralMinionsKilled, 0);
   const totalMinutes = playerMatches.reduce((s, m) => s + m.match.info.gameDuration / 60, 0);
@@ -188,9 +190,9 @@ export default function MatchOverview({ matches, puuid }: Props) {
   return (
     <div className="space-y-4">
       {/* General Overview */}
-      <div className="rounded-xl border border-gray-600 bg-gradient-to-br from-gray-800/80 to-gray-900/80 p-5">
-        <h3 className="text-lg font-bold text-gray-100 mb-4">
-          Overview — Últimas {totalGames} partidas
+      <div className="panel p-5">
+        <h3 className="section-title text-lg font-bold text-gray-100 mb-4">
+          Resumen — Últimas {totalGames} partidas
           {remakeCount > 0 && (
             <span className="text-xs text-gray-500 font-normal ml-2">
               ({remakeCount} remake{remakeCount > 1 ? "s" : ""} excluido{remakeCount > 1 ? "s" : ""})
@@ -232,14 +234,14 @@ export default function MatchOverview({ matches, puuid }: Props) {
       </div>
 
       {/* 3-Column Feedback: Great / Mid / Bad */}
-      <div className="rounded-xl border border-gray-600 bg-gray-800/60 p-5">
+      <div className="panel p-5">
         <button
           onClick={() => setShowFeedback(!showFeedback)}
           className="flex items-center justify-between w-full text-left"
           aria-expanded={showFeedback}
         >
-          <h3 className="text-lg font-bold text-gray-100">
-            Coaching Feedback
+          <h3 className="section-title text-lg font-bold text-gray-100">
+            Coaching
           </h3>
           <span className="text-gray-400 text-sm">
             {showFeedback ? "▲ Ocultar" : "▼ Mostrar"}
@@ -321,13 +323,13 @@ export default function MatchOverview({ matches, puuid }: Props) {
       </div>
 
       {/* Champion Breakdown */}
-      <div className="rounded-xl border border-gray-600 bg-gray-800/60 p-5">
+      <div className="panel p-5">
         <button
           onClick={() => setShowChampions(!showChampions)}
           className="flex items-center justify-between w-full text-left"
           aria-expanded={showChampions}
         >
-          <h3 className="text-lg font-bold text-gray-100">
+          <h3 className="section-title text-lg font-bold text-gray-100">
             Stats por Campeón
           </h3>
           <span className="text-gray-400 text-sm">
@@ -341,7 +343,7 @@ export default function MatchOverview({ matches, puuid }: Props) {
               if (champ.games === 0) return null; // All remakes
               const wr = Math.round((champ.wins / champ.games) * 100);
               const kda = champ.deaths === 0
-                ? "Perfect"
+                ? "Perfecto"
                 : ((champ.kills + champ.assists) / champ.deaths).toFixed(2);
               const csMin = (champ.cs / champ.totalMinutes).toFixed(1);
               const avgDmg = (champ.totalDamage / champ.games / 1000).toFixed(1);
@@ -410,8 +412,16 @@ export default function MatchOverview({ matches, puuid }: Props) {
                   {/* Expanded: individual match breakdown */}
                   {isExpanded && (
                     <div className="mt-1 ml-4 sm:ml-14 space-y-1.5 pb-2">
+                      {profileHref && (
+                        <Link
+                          href={`${profileHref}/champion/${encodeURIComponent(champ.championName)}`}
+                          className="inline-block text-xs text-[#e3c98a] hover:text-[#f0e6d2] hover:underline focus-ring rounded px-3 pt-2"
+                        >
+                          Ver perfil completo de {champ.championName} →
+                        </Link>
+                      )}
                       <div className="grid grid-cols-7 sm:grid-cols-8 gap-1 text-xs text-gray-500 font-medium px-3 pt-2">
-                        <span>Result</span>
+                        <span>Resultado</span>
                         <span>KDA</span>
                         <span className="hidden sm:block">CS</span>
                         <span>Daño</span>
@@ -509,7 +519,7 @@ function generateCategorizedFeedback(input: FeedbackInput): CategorizedFeedback 
   const mid: FeedbackItem[] = [];
   const bad: FeedbackItem[] = [];
 
-  const kda = input.avgKDA === "Perfect" ? 99 : parseFloat(input.avgKDA);
+  const kda = input.avgKDA === "Perfecto" ? 99 : parseFloat(input.avgKDA);
 
   // ========== WIN RATE ==========
   if (input.winRate >= 65) {

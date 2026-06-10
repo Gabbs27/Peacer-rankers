@@ -7,17 +7,30 @@ import {
   getMatchIds,
   getMatches,
   getChampionMastery,
+  getPlayerChallenges,
   RiotApiError,
 } from "@/lib/riot-api";
 import { getDDragonVersion } from "@/lib/data-dragon";
-import type { ChampionMastery, LeagueEntry, MatchData, RiotAccount, Summoner } from "@/lib/types";
+import type { ChampionMastery, LeagueEntry, MatchData, PlayerChallenges, RiotAccount, Summoner } from "@/lib/types";
 import PlayerStats from "@/components/PlayerStats";
 import ChampionMasterySection from "@/components/ChampionMastery";
+import ChallengesSection from "@/components/ChallengesSection";
 import SummonerContent from "@/components/SummonerContent";
 import LiveGame from "@/components/LiveGame";
 
 interface PageProps {
   params: Promise<{ region: string; riotId: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps) {
+  const { riotId } = await params;
+  const decoded = decodeURIComponent(riotId);
+  const sep = decoded.lastIndexOf("-");
+  const name = sep > 0 ? `${decoded.slice(0, sep)}#${decoded.slice(sep + 1)}` : decoded;
+  return {
+    title: `${name} — LoL Tracker`,
+    description: `Estadísticas, historial y análisis de partidas de ${name} en League of Legends.`,
+  };
 }
 
 function ErrorPanel({ title, message }: { title: string; message: string }) {
@@ -38,6 +51,7 @@ interface ProfileData {
   ranked: LeagueEntry[];
   matches: MatchData[];
   mastery: ChampionMastery[];
+  challenges: PlayerChallenges | null;
   ddragonVersion: string;
 }
 
@@ -65,16 +79,17 @@ export default async function SummonerPage({ params }: PageProps) {
 
   try {
     const account = await getAccountByRiotId(gameName, tagLine, region);
-    const [summoner, ranked, matchIds, ddragonVersion, mastery] = await Promise.all([
+    const [summoner, ranked, matchIds, ddragonVersion, mastery, challenges] = await Promise.all([
       getSummonerByPuuid(account.puuid, region),
       getLeagueEntries(account.puuid, region),
       getMatchIds(account.puuid, region, 10),
       getDDragonVersion(),
-      // Non-critical: some dev keys lack champion-mastery access — degrade to empty.
+      // Non-critical extras — degrade gracefully if the key lacks access.
       getChampionMastery(account.puuid, region, 8).catch(() => [] as ChampionMastery[]),
+      getPlayerChallenges(account.puuid, region).catch(() => null),
     ]);
     const matches = await getMatches(matchIds, region);
-    data = { account, summoner, ranked, matches, mastery, ddragonVersion };
+    data = { account, summoner, ranked, matches, mastery, challenges, ddragonVersion };
   } catch (error) {
     errorMessage =
       error instanceof RiotApiError ? error.publicMessage : "No se pudo cargar el perfil.";
@@ -96,11 +111,13 @@ export default async function SummonerPage({ params }: PageProps) {
         ddragonVersion={data.ddragonVersion}
       />
       <ChampionMasterySection mastery={data.mastery} />
+      <ChallengesSection challenges={data.challenges} />
       <LiveGame puuid={data.account.puuid} region={region} />
       <SummonerContent
         initialMatches={data.matches}
         puuid={data.account.puuid}
         region={region}
+        riotId={riotId}
         ranked={data.ranked}
       />
     </div>
