@@ -24,6 +24,7 @@ import BuildRecommendationComponent from "./BuildRecommendation";
 import { getBriarMatchup, getBriarBuildForComp, BRIAR_TIPS } from "@/lib/briar-guide";
 import { useDDragonVersion } from "./DDragonProvider";
 import TimelineSection from "./TimelineSection";
+import LobbyRankChips from "./LobbyRankChips";
 
 interface Props {
   match: MatchData;
@@ -75,10 +76,10 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
 
   return (
     <article
-      className={`rounded-lg border ${
+      className={`rounded-xl overflow-hidden border border-l-4 backdrop-blur-[2px] ${
         player.win
-          ? "bg-blue-900/30 border-blue-700/50"
-          : "bg-red-900/30 border-red-700/50"
+          ? "bg-blue-950/35 border-blue-500/20 border-l-blue-400/90"
+          : "bg-red-950/30 border-red-500/20 border-l-red-400/90"
       }`}
     >
       {/* Summary row */}
@@ -88,12 +89,6 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
         aria-label={`${player.championName}, ${player.win ? "Victoria" : "Derrota"}, ${player.kills}/${player.deaths}/${player.assists}`}
         className="w-full flex items-center gap-2 sm:gap-3 p-3 sm:p-4 text-left hover:bg-white/5 transition-colors overflow-hidden"
       >
-        {/* Win/Loss indicator */}
-        <div
-          className={`w-1 h-12 sm:h-16 rounded-full shrink-0 ${
-            player.win ? "bg-blue-500" : "bg-red-500"
-          }`}
-        />
         <span className="sr-only">{player.win ? "Victoria" : "Derrota"}</span>
 
         {/* Champion + Summoner Spells */}
@@ -219,6 +214,9 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
               </div>
             </div>
           )}
+
+          {/* Honest percentile: rank vs the 10 players of THIS match */}
+          {!remake && <LobbyRankChips player={player} matchInfo={match.info} />}
 
           {/* Timeline insights (lazy: fetched only when this card is expanded) */}
           {!remake && (

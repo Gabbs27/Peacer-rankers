@@ -6,6 +6,7 @@ import {
   MatchData,
   TimelineData,
   ChampionMastery,
+  PlayerChallenges,
   Region,
   REGION_TO_ROUTE,
   REGION_TO_ACCOUNT_ROUTE,
@@ -62,6 +63,7 @@ const TTL = {
   match: 24 * 60 * 60, // a finished match is immutable
   timeline: 24 * 60 * 60, // a finished match's timeline is immutable
   mastery: 10 * 60, // mastery points change per game
+  challenges: 30 * 60, // challenge points move slowly
 } as const;
 
 const MAX_RETRIES = 2;
@@ -92,6 +94,15 @@ const matchSchema = z.object({
 const masterySchema = z.array(
   z.object({ championId: z.number(), championLevel: z.number(), championPoints: z.number() })
 );
+const challengePointsSchema = z.object({
+  level: z.string(),
+  current: z.number(),
+  max: z.number(),
+});
+const challengesSchema = z.object({
+  totalPoints: challengePointsSchema,
+  categoryPoints: z.record(z.string(), challengePointsSchema),
+});
 const timelineSchema = z.object({
   metadata: z.object({ participants: z.array(z.string()).min(1) }),
   info: z.object({
@@ -253,6 +264,18 @@ export async function getChampionMastery(
     fetchRiotRaw<ChampionMastery[]>(
       `${platformHost(region)}/lol/champion-mastery/v4/champion-masteries/by-puuid/${encodeURIComponent(puuid)}/top?count=${count}`,
       masterySchema
+    )
+  );
+}
+
+export async function getPlayerChallenges(
+  puuid: string,
+  region: Region
+): Promise<PlayerChallenges> {
+  return cached(["challenges", region, puuid], TTL.challenges, () =>
+    fetchRiotRaw<PlayerChallenges>(
+      `${platformHost(region)}/lol/challenges/v1/player-data/${encodeURIComponent(puuid)}`,
+      challengesSchema
     )
   );
 }

@@ -4,11 +4,14 @@ import { useState, useCallback } from "react";
 import { MatchData, LeagueEntry } from "@/lib/types";
 import MatchOverview from "./MatchOverview";
 import MatchCard from "./MatchCard";
+import TrendsPanel from "./TrendsPanel";
+import LossPatternPanel from "./LossPatternPanel";
 
 interface Props {
   initialMatches: MatchData[];
   puuid: string;
   region: string;
+  riotId: string;
   ranked: LeagueEntry[];
 }
 
@@ -21,7 +24,7 @@ const QUEUE_OPTIONS = [
   { label: "ARAM", value: "450" },
 ];
 
-export default function SummonerContent({ initialMatches, puuid, region, ranked }: Props) {
+export default function SummonerContent({ initialMatches, puuid, region, riotId, ranked }: Props) {
   const [matches, setMatches] = useState<MatchData[]>(initialMatches);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(initialMatches.length === 10);
@@ -75,7 +78,9 @@ export default function SummonerContent({ initialMatches, puuid, region, ranked 
 
   return (
     <>
-      <MatchOverview matches={matches} puuid={puuid} />
+      <MatchOverview matches={matches} puuid={puuid} profileHref={`/summoner/${region}/${riotId}`} />
+      <TrendsPanel matches={matches} puuid={puuid} />
+      <LossPatternPanel matches={matches} puuid={puuid} />
 
       <div>
         <div className="flex flex-wrap items-center gap-3 mb-4">
