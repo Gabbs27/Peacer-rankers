@@ -74,7 +74,7 @@ export function getQueueName(queueId: number): string {
     1700: "Arena",
     1900: "URF",
   };
-  return queueMap[queueId] || "Custom";
+  return queueMap[queueId] || "Personalizada";
 }
 
 export function formatDuration(seconds: number): string {
@@ -84,7 +84,7 @@ export function formatDuration(seconds: number): string {
 }
 
 export function getKDA(kills: number, deaths: number, assists: number): string {
-  if (deaths === 0) return "Perfect";
+  if (deaths === 0) return "Perfecto";
   return ((kills + assists) / deaths).toFixed(2);
 }
 

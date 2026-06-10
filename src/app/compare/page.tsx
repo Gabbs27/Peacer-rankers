@@ -241,7 +241,7 @@ export default function ComparePage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-6">Comparar Jugadores</h1>
+      <h1 className="font-display text-2xl sm:text-3xl font-bold mb-6 text-[#f0e6d2]">Comparar Jugadores</h1>
 
       <form onSubmit={handleCompare} className="mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

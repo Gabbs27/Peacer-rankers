@@ -32,7 +32,7 @@ export default function SearchBar() {
         aria-label="Seleccionar región"
         value={region}
         onChange={(e) => setRegion(e.target.value as Region)}
-        className="w-full sm:w-auto bg-gray-700 border border-gray-500 rounded-lg px-4 py-3 text-white focus-ring"
+        className="w-full sm:w-auto bg-gray-800/80 border border-gray-600 rounded-lg px-4 py-3 text-white focus-ring"
       >
         {regions.map(([value, label]) => (
           <option key={value} value={value}>
@@ -48,7 +48,7 @@ export default function SearchBar() {
         aria-label="Nombre de invocador"
         value={gameName}
         onChange={(e) => setGameName(e.target.value)}
-        className="w-full sm:flex-1 bg-gray-700 border border-gray-500 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus-ring"
+        className="w-full sm:flex-1 bg-gray-800/80 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus-ring"
       />
       <label htmlFor="tag-line" className="sr-only">Tag</label>
       <input
@@ -58,11 +58,11 @@ export default function SearchBar() {
         aria-label="Tag"
         value={tagLine}
         onChange={(e) => setTagLine(e.target.value)}
-        className="w-full sm:w-32 bg-gray-700 border border-gray-500 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus-ring"
+        className="w-full sm:w-32 bg-gray-800/80 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus-ring"
       />
       <button
         type="submit"
-        className="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors focus-ring"
+        className="w-full sm:w-auto bg-gradient-to-b from-[#e3c98a] to-[#c8aa6e] hover:from-[#f0e6d2] hover:to-[#e3c98a] text-gray-950 font-bold py-3 px-6 rounded-lg transition-colors focus-ring"
       >
         Buscar
       </button>
