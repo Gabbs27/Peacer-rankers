@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { MatchData, LeagueEntry } from "@/lib/types";
 import {
   formatDuration,
@@ -375,32 +376,58 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
                       .filter((p) => p.teamId === teamId)
                       .map((p) => {
                         const isWorst = isPlayerTeam && worstAlly && p.puuid === worstAlly.player.puuid;
+                        const isMe = p.puuid === puuid;
+                        // Only newer matches expose the Riot ID needed to build a profile link.
+                        const href =
+                          p.riotIdGameName && p.riotIdTagline
+                            ? `/summoner/${region}/${encodeURIComponent(p.riotIdGameName)}-${encodeURIComponent(p.riotIdTagline)}`
+                            : null;
+                        const pItems = [p.item0, p.item1, p.item2, p.item3, p.item4, p.item5];
+                        const displayName = p.riotIdGameName || p.summonerName || "Desconocido";
+
+                        const identity = (
+                          <>
+                            <ChampionIcon championName={p.championName} size={28} />
+                            <span className="text-xs text-gray-400 w-8 shrink-0 text-center" title={p.individualPosition}>
+                              {getRoleLabel(p.individualPosition)}
+                            </span>
+                            <span
+                              className={`truncate min-w-0 group-hover:text-[#e3c98a] group-hover:underline ${
+                                isWorst ? "text-red-300" : isMe ? "text-[#f0e6d2] font-semibold" : ""
+                              }`}
+                            >
+                              {displayName}
+                              {isWorst && (
+                                <span className="text-red-400 text-xs ml-1 font-medium">
+                                  ← peor rendimiento
+                                </span>
+                              )}
+                            </span>
+                          </>
+                        );
+
                         return (
                           <div key={p.puuid}>
                             <div
                               className={`flex items-center gap-2 p-2 rounded text-sm ${
-                                p.puuid === puuid
+                                isMe
                                   ? "bg-white/10"
                                   : isWorst
                                   ? "bg-red-900/30 border border-red-600/40"
                                   : ""
                               }`}
                             >
-                              <ChampionIcon
-                                championName={p.championName}
-                                size={28}
-                              />
-                              <span className="text-xs text-gray-400 w-8 shrink-0 text-center" title={p.individualPosition}>
-                                {getRoleLabel(p.individualPosition)}
-                              </span>
-                              <span className={`flex-1 truncate min-w-0 ${isWorst ? "text-red-300" : ""}`}>
-                                {p.riotIdGameName || p.summonerName}
-                                {isWorst && (
-                                  <span className="text-red-400 text-xs ml-1 font-medium">
-                                    ← peor rendimiento
-                                  </span>
-                                )}
-                              </span>
+                              {href ? (
+                                <Link
+                                  href={href}
+                                  className="group flex items-center gap-2 flex-1 min-w-0 rounded hover:bg-white/5 focus-ring"
+                                  title={`Ver perfil de ${displayName}`}
+                                >
+                                  {identity}
+                                </Link>
+                              ) : (
+                                <div className="flex items-center gap-2 flex-1 min-w-0">{identity}</div>
+                              )}
                               <span className="text-gray-200 shrink-0 font-medium">
                                 {p.kills}/{p.deaths}/{p.assists}
                               </span>
@@ -411,10 +438,7 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
                                     : "text-gray-300"
                                 }`}
                               >
-                                {(
-                                  p.totalDamageDealtToChampions / 1000
-                                ).toFixed(1)}
-                                k
+                                {(p.totalDamageDealtToChampions / 1000).toFixed(1)}k
                               </span>
                               <span className="text-yellow-400/70 text-xs w-10 text-right shrink-0 hidden sm:inline">
                                 {(p.goldEarned / 1000).toFixed(1)}k
@@ -422,6 +446,14 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
                               <span className="text-blue-400/70 text-xs w-8 text-right shrink-0 hidden sm:inline">
                                 {p.visionScore}v
                               </span>
+                            </div>
+                            {/* Items */}
+                            <div className="flex items-center gap-0.5 ml-10 mt-1 mb-1">
+                              {pItems.map((it, i) => (
+                                <ItemIcon key={i} itemId={it} size={20} />
+                              ))}
+                              <span className="w-1 shrink-0" />
+                              <ItemIcon itemId={p.item6} size={20} />
                             </div>
                             {isWorst && (
                               <div className="ml-10 mt-0.5 mb-1 px-2 py-1 bg-red-900/20 rounded text-xs text-red-300 border-l-2 border-red-500/50">
