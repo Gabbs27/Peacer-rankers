@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { MatchData, LeagueEntry } from "@/lib/types";
+import MatchIdBadge from "./MatchIdBadge";
 import {
   formatDuration,
   getKDA,
@@ -245,6 +246,7 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
                 {getMapName(match.info.mapId)} · {formatDuration(match.info.gameDuration)} · {timeSince}
               </p>
             </div>
+            <MatchIdBadge matchId={match.metadata.matchId} />
           </div>
 
           {/* Guide links */}
