@@ -1,19 +1,14 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { getChampionIconUrl, getItemIconUrl, getMobafireSearchUrl, getUGGChampionUrl, getChampionDataUrl } from "@/lib/data-dragon";
+import { getChampionIconUrl, getItemIconUrl, getMobafireSearchUrl, getUGGChampionUrl } from "@/lib/data-dragon";
+import { loadChampionList, type ChampionListEntry } from "@/lib/champion-client";
 import { getRuneRecommendation } from "@/lib/runes";
 import { getBuildPath } from "@/lib/build-paths";
 import { getChampionDamageType } from "@/lib/champion-data";
 import { useDDragonVersion } from "@/components/DDragonProvider";
 import type { RuneRecommendation } from "@/lib/runes";
 import type { BuildPath } from "@/lib/build-paths";
-
-interface ChampionData {
-  id: string;
-  name: string;
-  key: string;
-}
 
 const ROLES = [
   { key: "TOP", label: "TOP" },
@@ -24,7 +19,7 @@ const ROLES = [
 ];
 
 // Simple enemy comp analysis for display, using the canonical champion damage map.
-function analyzeEnemyDisplay(enemies: ChampionData[]) {
+function analyzeEnemyDisplay(enemies: ChampionListEntry[]) {
   let ap = 0, ad = 0, tank = 0;
   enemies.forEach((e) => {
     const t = getChampionDamageType(e.id);
@@ -37,24 +32,19 @@ function analyzeEnemyDisplay(enemies: ChampionData[]) {
 
 export default function PlannerPage() {
   const ddragonVersion = useDDragonVersion();
-  const [champions, setChampions] = useState<ChampionData[]>([]);
+  const [champions, setChampions] = useState<ChampionListEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedChampion, setSelectedChampion] = useState<ChampionData | null>(null);
+  const [selectedChampion, setSelectedChampion] = useState<ChampionListEntry | null>(null);
   const [selectedRole, setSelectedRole] = useState("MID");
-  const [enemies, setEnemies] = useState<ChampionData[]>([]);
+  const [enemies, setEnemies] = useState<ChampionListEntry[]>([]);
   const [pickingMode, setPickingMode] = useState<"player" | "enemy">("player");
 
   useEffect(() => {
-    fetch(getChampionDataUrl(ddragonVersion, "es_MX"))
-      .then((res) => res.json())
-      .then((data) => {
-        const champs = Object.values(data.data) as ChampionData[];
-        champs.sort((a, b) => a.name.localeCompare(b.name));
-        setChampions(champs);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    loadChampionList(ddragonVersion)
+      .then((champs) => setChampions(champs))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [ddragonVersion]);
 
   const filtered = useMemo(
@@ -67,7 +57,7 @@ export default function PlannerPage() {
     [champions, search]
   );
 
-  const handleChampionClick = (champ: ChampionData) => {
+  const handleChampionClick = (champ: ChampionListEntry) => {
     if (pickingMode === "player") {
       setSelectedChampion(champ);
       setPickingMode("enemy");

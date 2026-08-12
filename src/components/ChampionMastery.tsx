@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { ChampionMastery } from "@/lib/types";
-import { getChampionDataUrl } from "@/lib/data-dragon";
+import { loadChampionIdMap } from "@/lib/champion-client";
 import { useDDragonVersion } from "./DDragonProvider";
 import ChampionIcon from "./ChampionIcon";
 
 interface Props {
   mastery: ChampionMastery[];
+  profileHref?: string;
 }
 
 function formatPoints(points: number): string {
@@ -17,22 +19,16 @@ function formatPoints(points: number): string {
 
 // Champion mastery returns champion IDs; Data Dragon icons are keyed by champion
 // name, so we fetch the champion list once and build an id -> name lookup.
-export default function ChampionMasterySection({ mastery }: Props) {
+export default function ChampionMasterySection({ mastery, profileHref }: Props) {
   const version = useDDragonVersion();
   const [idToName, setIdToName] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (mastery.length === 0) return;
     let cancelled = false;
-    fetch(getChampionDataUrl(version, "es_MX"))
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled) return;
-        const map: Record<number, string> = {};
-        for (const champ of Object.values(data.data) as { id: string; key: string }[]) {
-          map[Number(champ.key)] = champ.id;
-        }
-        setIdToName(map);
+    loadChampionIdMap(version)
+      .then((map) => {
+        if (!cancelled) setIdToName(map);
       })
       .catch(() => {});
     return () => {
@@ -50,19 +46,34 @@ export default function ChampionMasterySection({ mastery }: Props) {
           const name = idToName[m.championId];
           return (
             <li key={m.championId} className="flex flex-col items-center gap-1 text-center">
-              <div className="relative">
-                {name ? (
-                  <ChampionIcon championName={name} size={56} className="border-2 border-gray-600" />
+              {(() => {
+                const badge = (
+                  <div className="relative">
+                    {name ? (
+                      <ChampionIcon championName={name} size={56} className="border-2 border-gray-600 group-hover:border-[#c8aa6e] transition-colors" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-gray-700 animate-pulse" aria-hidden />
+                    )}
+                    <span
+                      className="absolute -bottom-1 -right-1 bg-gray-900 text-yellow-400 text-[11px] font-bold rounded-full w-6 h-6 flex items-center justify-center border border-gray-600"
+                      title={`Nivel de maestría ${m.championLevel}`}
+                    >
+                      {m.championLevel}
+                    </span>
+                  </div>
+                );
+                return profileHref && name ? (
+                  <Link
+                    href={`${profileHref}/champion/${encodeURIComponent(name)}`}
+                    className="group focus-ring rounded-full"
+                    title={`Ver tus partidas con ${name}`}
+                  >
+                    {badge}
+                  </Link>
                 ) : (
-                  <div className="w-14 h-14 rounded-full bg-gray-700 animate-pulse" aria-hidden />
-                )}
-                <span
-                  className="absolute -bottom-1 -right-1 bg-gray-900 text-yellow-400 text-[11px] font-bold rounded-full w-6 h-6 flex items-center justify-center border border-gray-600"
-                  title={`Nivel de maestría ${m.championLevel}`}
-                >
-                  {m.championLevel}
-                </span>
-              </div>
+                  badge
+                );
+              })()}
               <span className="text-xs text-gray-400 mt-1">{formatPoints(m.championPoints)} pts</span>
             </li>
           );

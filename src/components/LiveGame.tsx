@@ -7,17 +7,11 @@ import {
   getChampionIconUrl,
   getSummonerSpellIconUrl,
   getQueueName,
-  getChampionDataUrl,
 } from "@/lib/data-dragon";
+import { loadChampionIdMap } from "@/lib/champion-client";
 import { useDDragonVersion } from "./DDragonProvider";
 
 const POLL_INTERVAL_MS = 60_000;
-
-interface ChampionData {
-  key: string;
-  id: string;
-  name: string;
-}
 
 interface LiveGameProps {
   puuid: string;
@@ -29,23 +23,6 @@ interface LiveGameData {
   game?: CurrentGameInfo;
   ranks?: Record<string, { tier: string; rank: string; lp: number } | null>;
   error?: string;
-}
-
-// Map champion ID (number) to champion name (Data Dragon key), cached per version.
-const championByIdCache = new Map<string, Record<number, string>>();
-
-async function getChampionById(version: string): Promise<Record<number, string>> {
-  const cached = championByIdCache.get(version);
-  if (cached) return cached;
-
-  const res = await fetch(getChampionDataUrl(version));
-  const data = await res.json();
-  const map: Record<number, string> = {};
-  for (const champ of Object.values(data.data) as ChampionData[]) {
-    map[parseInt(champ.key)] = champ.id;
-  }
-  championByIdCache.set(version, map);
-  return map;
 }
 
 function formatGameTime(seconds: number): string {
@@ -84,7 +61,7 @@ export default function LiveGame({ puuid, region }: LiveGameProps) {
       try {
         const [res, champMap] = await Promise.all([
           fetch(`/api/live-game?puuid=${encodeURIComponent(puuid)}&region=${encodeURIComponent(region)}`),
-          getChampionById(ddragonVersion),
+          loadChampionIdMap(ddragonVersion),
         ]);
         if (cancelled) return;
         setChampionMap(champMap);

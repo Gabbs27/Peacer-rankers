@@ -1,31 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getChampionIconUrl, getMobafireSearchUrl, getChampionDataUrl } from "@/lib/data-dragon";
+import { getChampionIconUrl, getMobafireSearchUrl } from "@/lib/data-dragon";
+import { loadChampionList, type ChampionListEntry } from "@/lib/champion-client";
 import { useDDragonVersion } from "@/components/DDragonProvider";
-
-interface ChampionData {
-  id: string;
-  name: string;
-  key: string;
-}
 
 export default function GuidesPage() {
   const ddragonVersion = useDDragonVersion();
-  const [champions, setChampions] = useState<ChampionData[]>([]);
+  const [champions, setChampions] = useState<ChampionListEntry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(getChampionDataUrl(ddragonVersion, "es_MX"))
-      .then((res) => res.json())
-      .then((data) => {
-        const champs = Object.values(data.data) as ChampionData[];
-        champs.sort((a, b) => a.name.localeCompare(b.name));
-        setChampions(champs);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    loadChampionList(ddragonVersion)
+      .then((champs) => setChampions(champs))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [ddragonVersion]);
 
   const filtered = champions.filter(

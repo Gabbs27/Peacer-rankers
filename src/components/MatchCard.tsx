@@ -28,6 +28,8 @@ import { getBriarMatchup, getBriarBuildForComp, BRIAR_TIPS } from "@/lib/briar-g
 import { useDDragonVersion } from "./DDragonProvider";
 import TimelineSection from "./TimelineSection";
 import LobbyRankChips from "./LobbyRankChips";
+import BansRow from "./BansRow";
+import TeamTotals from "./TeamTotals";
 
 interface Props {
   match: MatchData;
@@ -122,8 +124,21 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
 
         {/* KDA + CS on mobile */}
         <div className="min-w-0 shrink">
-          <p className="font-bold text-sm sm:text-base">
+          <p className="font-bold text-sm sm:text-base flex items-center gap-1.5">
             {player.kills}/{player.deaths}/{player.assists}
+            {player.pentaKills > 0 ? (
+              <span className="text-[10px] font-black uppercase tracking-wide bg-gradient-to-r from-[#e3c98a] to-[#c8aa6e] text-gray-950 rounded px-1.5 py-0.5">
+                Penta
+              </span>
+            ) : player.quadraKills > 0 ? (
+              <span className="text-[10px] font-black uppercase tracking-wide bg-purple-500/80 text-white rounded px-1.5 py-0.5">
+                Quadra
+              </span>
+            ) : player.tripleKills > 0 ? (
+              <span className="text-[10px] font-bold uppercase tracking-wide bg-blue-500/70 text-white rounded px-1.5 py-0.5">
+                Triple
+              </span>
+            ) : null}
           </p>
           <p className="text-xs text-gray-300">
             {getKDA(player.kills, player.deaths, player.assists)} KDA
@@ -350,6 +365,9 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
             </div>
           )}
 
+          {/* Team totals comparison */}
+          <TeamTotals matchInfo={match.info} />
+
           {/* All players */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[100, 200].map((teamId) => {
@@ -374,6 +392,7 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
                       </span>
                     )}
                   </h4>
+                  {team && <BansRow bans={team.bans} />}
                   <div className="space-y-1">
                     {match.info.participants
                       .filter((p) => p.teamId === teamId)
