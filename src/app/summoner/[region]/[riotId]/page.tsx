@@ -110,7 +110,7 @@ export default async function SummonerPage({ params }: PageProps) {
         region={region}
         ddragonVersion={data.ddragonVersion}
       />
-      <ChampionMasterySection mastery={data.mastery} />
+      <ChampionMasterySection mastery={data.mastery} profileHref={`/summoner/${region}/${riotId}`} />
       <ChallengesSection challenges={data.challenges} />
       <LiveGame puuid={data.account.puuid} region={region} />
       <SummonerContent

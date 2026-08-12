@@ -33,6 +33,7 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
   const [queueFilter, setQueueFilter] = useState("");
   const [champFilter, setChampFilter] = useState("");
   const [resultFilter, setResultFilter] = useState<"" | "win" | "loss">("");
+  const [roleFilter, setRoleFilter] = useState("");
 
   const fetchMatches = useCallback(async (start: number, queue: string, replace: boolean) => {
     setLoading(true);
@@ -70,6 +71,7 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
     if (champFilter && player.championName !== champFilter) return false;
     if (resultFilter === "win" && !player.win) return false;
     if (resultFilter === "loss" && player.win) return false;
+    if (roleFilter && (player.teamPosition || player.individualPosition) !== roleFilter) return false;
     return true;
   });
 
@@ -141,6 +143,20 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
               ))}
             </select>
           )}
+
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            aria-label="Filtrar por rol"
+            className="bg-gray-700 border border-gray-600 text-sm rounded-lg px-3 py-1.5 text-gray-200 focus-ring"
+          >
+            <option value="">Todos los roles</option>
+            <option value="TOP">Top</option>
+            <option value="JUNGLE">Jungla</option>
+            <option value="MIDDLE">Mid</option>
+            <option value="BOTTOM">ADC</option>
+            <option value="UTILITY">Soporte</option>
+          </select>
 
           <select
             value={resultFilter}
