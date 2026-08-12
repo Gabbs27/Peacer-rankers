@@ -6,6 +6,8 @@ import MatchOverview from "./MatchOverview";
 import MatchCard from "./MatchCard";
 import TrendsPanel from "./TrendsPanel";
 import LossPatternPanel from "./LossPatternPanel";
+import FormPanel from "./FormPanel";
+import TeammatesPanel from "./TeammatesPanel";
 
 interface Props {
   initialMatches: MatchData[];
@@ -76,11 +78,40 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
     matches.map((m) => m.info.participants.find((p) => p.puuid === puuid)?.championName).filter(Boolean)
   )] as string[];
 
+  // Group the (newest-first) list by calendar day, with a per-day W/L summary.
+  // Days are keyed in UTC so server and client agree during hydration.
+  const dayGroups: { key: string; label: string; wins: number; losses: number; items: MatchData[] }[] = [];
+  for (const m of filteredMatches) {
+    const date = new Date(m.info.gameCreation);
+    const key = date.toISOString().slice(0, 10);
+    let group = dayGroups[dayGroups.length - 1];
+    if (!group || group.key !== key) {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const yesterdayKey = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const label =
+        key === todayKey
+          ? "Hoy"
+          : key === yesterdayKey
+            ? "Ayer"
+            : date.toLocaleDateString("es", { day: "numeric", month: "short", timeZone: "UTC" });
+      group = { key, label, wins: 0, losses: 0, items: [] };
+      dayGroups.push(group);
+    }
+    group.items.push(m);
+    const me = m.info.participants.find((p) => p.puuid === puuid);
+    if (me && m.info.gameDuration >= 300) {
+      if (me.win) group.wins++;
+      else group.losses++;
+    }
+  }
+
   return (
     <>
+      <FormPanel matches={matches} puuid={puuid} />
       <MatchOverview matches={matches} puuid={puuid} profileHref={`/summoner/${region}/${riotId}`} />
       <TrendsPanel matches={matches} puuid={puuid} />
       <LossPatternPanel matches={matches} puuid={puuid} />
+      <TeammatesPanel matches={matches} puuid={puuid} region={region} />
 
       <div>
         <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -124,14 +155,30 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
         </div>
 
         <div className="space-y-3">
-          {filteredMatches.map((match) => (
-            <MatchCard
-              key={match.metadata.matchId}
-              match={match}
-              puuid={puuid}
-              region={region}
-              ranked={ranked}
-            />
+          {dayGroups.map((group) => (
+            <div key={group.key} className="space-y-3">
+              <div className="flex items-center gap-3 pt-2">
+                <span
+                  suppressHydrationWarning
+                  className="font-display text-sm font-semibold text-[#e3c98a]"
+                >
+                  {group.label}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {group.wins}V {group.losses}D
+                </span>
+                <span className="flex-1 h-px bg-gradient-to-r from-[#c8aa6e]/30 to-transparent" aria-hidden />
+              </div>
+              {group.items.map((match) => (
+                <MatchCard
+                  key={match.metadata.matchId}
+                  match={match}
+                  puuid={puuid}
+                  region={region}
+                  ranked={ranked}
+                />
+              ))}
+            </div>
           ))}
         </div>
 

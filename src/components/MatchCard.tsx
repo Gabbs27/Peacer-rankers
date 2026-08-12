@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MatchData, LeagueEntry } from "@/lib/types";
 import MatchIdBadge from "./MatchIdBadge";
+import RuneKeystone from "./RuneKeystone";
 import {
   formatDuration,
   getKDA,
@@ -390,6 +391,7 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
                         const identity = (
                           <>
                             <ChampionIcon championName={p.championName} size={28} />
+                            <RuneKeystone perks={p.perks} size={18} />
                             <span className="text-xs text-gray-400 w-8 shrink-0 text-center" title={p.individualPosition}>
                               {getRoleLabel(p.individualPosition)}
                             </span>
@@ -433,14 +435,24 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
                               <span className="text-gray-200 shrink-0 font-medium">
                                 {p.kills}/{p.deaths}/{p.assists}
                               </span>
-                              <span
-                                className={`text-xs w-14 text-right shrink-0 ${
-                                  p.totalDamageDealtToChampions === highestDmg
-                                    ? "text-yellow-300 font-bold"
-                                    : "text-gray-300"
-                                }`}
-                              >
-                                {(p.totalDamageDealtToChampions / 1000).toFixed(1)}k
+                              <span className="w-14 shrink-0 text-right">
+                                <span
+                                  className={`text-xs ${
+                                    p.totalDamageDealtToChampions === highestDmg
+                                      ? "text-yellow-300 font-bold"
+                                      : "text-gray-300"
+                                  }`}
+                                >
+                                  {(p.totalDamageDealtToChampions / 1000).toFixed(1)}k
+                                </span>
+                                <span className="block h-[3px] mt-0.5 rounded bg-gray-800 overflow-hidden" aria-hidden>
+                                  <span
+                                    className={`block h-full rounded ${
+                                      p.totalDamageDealtToChampions === highestDmg ? "bg-yellow-400" : "bg-orange-400/70"
+                                    }`}
+                                    style={{ width: `${highestDmg > 0 ? Math.round((p.totalDamageDealtToChampions / highestDmg) * 100) : 0}%` }}
+                                  />
+                                </span>
                               </span>
                               <span className="text-yellow-400/70 text-xs w-10 text-right shrink-0 hidden sm:inline">
                                 {(p.goldEarned / 1000).toFixed(1)}k

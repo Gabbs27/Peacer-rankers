@@ -60,6 +60,15 @@ export function getChampionDataUrl(version: string, locale: string = "en_US"): s
   return `${base(version)}/data/${locale}/champion.json`;
 }
 
+export function getRunesDataUrl(version: string, locale: string = "es_MX"): string {
+  return `${base(version)}/data/${locale}/runesReforged.json`;
+}
+
+// Rune/style icons live under an UNVERSIONED img root, unlike champion/item icons.
+export function getRuneIconUrl(iconPath: string): string {
+  return `https://ddragon.leagueoflegends.com/cdn/img/${iconPath}`;
+}
+
 export function getQueueName(queueId: number): string {
   const queueMap: Record<number, string> = {
     420: "Ranked Solo/Duo",
