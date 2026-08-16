@@ -112,7 +112,7 @@ export default async function SummonerPage({ params }: PageProps) {
       />
       <ChampionMasterySection mastery={data.mastery} profileHref={`/summoner/${region}/${riotId}`} />
       <ChallengesSection challenges={data.challenges} />
-      <LiveGame puuid={data.account.puuid} region={region} />
+      <LiveGame puuid={data.account.puuid} region={region} matches={data.matches} />
       <SummonerContent
         initialMatches={data.matches}
         puuid={data.account.puuid}

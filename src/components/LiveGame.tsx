@@ -9,6 +9,8 @@ import {
   getQueueName,
 } from "@/lib/data-dragon";
 import { loadChampionIdMap } from "@/lib/champion-client";
+import LiveBuildAdvisor from "./LiveBuildAdvisor";
+import type { MatchData } from "@/lib/types";
 import { useDDragonVersion } from "./DDragonProvider";
 
 const POLL_INTERVAL_MS = 60_000;
@@ -16,7 +18,12 @@ const POLL_INTERVAL_MS = 60_000;
 interface LiveGameProps {
   puuid: string;
   region: string;
+  /** Loaded history, used by the build advisor for "vs comps like this". */
+  matches?: MatchData[];
 }
+
+// Smite — the only reliable role signal the spectator payload gives us.
+const SMITE_SPELL_ID = 11;
 
 interface LiveGameData {
   inGame: boolean;
@@ -43,7 +50,7 @@ function RankBadge({ rank }: { rank: { tier: string; rank: string; lp: number } 
   );
 }
 
-export default function LiveGame({ puuid, region }: LiveGameProps) {
+export default function LiveGame({ puuid, region, matches = [] }: LiveGameProps) {
   const ddragonVersion = useDDragonVersion();
   const [data, setData] = useState<LiveGameData | null>(null);
   const [championMap, setChampionMap] = useState<Record<number, string>>({});
@@ -205,6 +212,29 @@ export default function LiveGame({ puuid, region }: LiveGameProps) {
           </div>
         ))}
       </div>
+
+      {/* Build advice from the REAL enemy comp in this game */}
+      {(() => {
+        const me = game.participants.find((p) => p.puuid === puuid);
+        if (!me) return null;
+        const myChampion = championMap[me.championId];
+        const enemyChampions = game.participants
+          .filter((p) => p.teamId !== me.teamId)
+          .map((p) => championMap[p.championId])
+          .filter(Boolean);
+        if (!myChampion || enemyChampions.length === 0) return null;
+        const position =
+          me.spell1Id === SMITE_SPELL_ID || me.spell2Id === SMITE_SPELL_ID ? "JUNGLE" : "";
+        return (
+          <LiveBuildAdvisor
+            myChampion={myChampion}
+            enemyChampions={enemyChampions}
+            position={position}
+            matches={matches}
+            puuid={puuid}
+          />
+        );
+      })()}
     </div>
   );
 }

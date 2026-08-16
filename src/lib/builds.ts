@@ -58,12 +58,16 @@ export interface RecommendedItem {
   reason: string;
 }
 
-export function analyzeEnemyTeam(
-  matchInfo: MatchInfo,
-  playerTeamId: number
-): TeamAnalysis {
-  const enemies = matchInfo.participants.filter((p) => p.teamId !== playerTeamId);
+/**
+ * Composition analysis from champion names alone — usable for a LIVE game,
+ * where the spectator payload only gives champion ids (no end-of-game stats).
+ */
+export function analyzeChampionComp(championNames: string[]): TeamAnalysis {
+  return analyzeTypes(championNames.map((name) => getChampionType(name)));
+}
 
+/** Shared counting core: turns a list of damage types into a TeamAnalysis. */
+function analyzeTypes(types: DamageType[]): TeamAnalysis {
   // Display counts: each champion counted ONCE in their PRIMARY category
   let displayAp = 0;
   let displayAd = 0;
@@ -73,9 +77,7 @@ export function analyzeEnemyTeam(
   let threatAp = 0;
   let threatAd = 0;
 
-  enemies.forEach((e) => {
-    const type = getChampionTypeWithFallback(e.championName, e);
-
+  types.forEach((type) => {
     // Display: each champ goes into exactly ONE bucket
     switch (type) {
       case "AP": displayAp++; break;
@@ -106,6 +108,15 @@ export function analyzeEnemyTeam(
     isMixed: threatAp >= 2 && threatAd >= 2,
     isTankHeavy: displayTank >= 2,
   };
+}
+
+export function analyzeEnemyTeam(
+  matchInfo: MatchInfo,
+  playerTeamId: number
+): TeamAnalysis {
+  const enemies = matchInfo.participants.filter((p) => p.teamId !== playerTeamId);
+  // End-of-game data lets us fall back to measured damage for unknown champions.
+  return analyzeTypes(enemies.map((e) => getChampionTypeWithFallback(e.championName, e)));
 }
 
 export function getDefensiveRecommendations(
