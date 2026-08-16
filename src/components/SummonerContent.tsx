@@ -8,6 +8,7 @@ import TrendsPanel from "./TrendsPanel";
 import LossPatternPanel from "./LossPatternPanel";
 import FormPanel from "./FormPanel";
 import TeammatesPanel from "./TeammatesPanel";
+import WinFormulaPanel from "./WinFormulaPanel";
 
 interface Props {
   initialMatches: MatchData[];
@@ -111,6 +112,7 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
     <>
       <FormPanel matches={matches} puuid={puuid} />
       <MatchOverview matches={matches} puuid={puuid} profileHref={`/summoner/${region}/${riotId}`} />
+      <WinFormulaPanel matches={matches} puuid={puuid} />
       <TrendsPanel matches={matches} puuid={puuid} />
       <LossPatternPanel matches={matches} puuid={puuid} />
       <TeammatesPanel matches={matches} puuid={puuid} region={region} />

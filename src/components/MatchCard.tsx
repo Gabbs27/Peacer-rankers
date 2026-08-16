@@ -28,6 +28,7 @@ import { getBriarMatchup, getBriarBuildForComp, BRIAR_TIPS } from "@/lib/briar-g
 import { useDDragonVersion } from "./DDragonProvider";
 import TimelineSection from "./TimelineSection";
 import LobbyRankChips from "./LobbyRankChips";
+import CoachingCard from "./CoachingCard";
 import BansRow from "./BansRow";
 import TeamTotals from "./TeamTotals";
 
@@ -233,6 +234,9 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
             </div>
           )}
 
+          {/* Riot's own computed coaching metrics for this game */}
+          {!remake && <CoachingCard player={player} matchInfo={match.info} />}
+
           {/* Honest percentile: rank vs the 10 players of THIS match */}
           {!remake && <LobbyRankChips player={player} matchInfo={match.info} />}
 
@@ -242,6 +246,7 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
               matchId={match.metadata.matchId}
               region={region}
               puuid={puuid}
+              mapId={match.info.mapId}
             />
           )}
 
