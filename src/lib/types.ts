@@ -109,6 +109,20 @@ export interface MatchParticipant {
   dragonKills: number;
   baronKills: number;
   perks: ParticipantPerks;
+  // Extra end-of-game fields Riot always ships (typed here because they drive
+  // the coaching panels).
+  totalTimeSpentDead?: number; // seconds
+  longestTimeSpentLiving?: number;
+  timeCCingOthers?: number;
+  damageDealtToObjectives?: number;
+  damageDealtToTurrets?: number;
+  damageSelfMitigated?: number;
+  totalHealsOnTeammates?: number;
+  totalDamageShieldedOnTeammates?: number;
+  detectorWardsPlaced?: number;
+  gameEndedInSurrender?: boolean;
+  firstTowerKill?: boolean;
+  challenges?: ParticipantChallenges;
 }
 
 export interface ParticipantPerks {
@@ -185,6 +199,95 @@ export interface TimelineParticipantFrame {
   jungleMinionsKilled: number;
 }
 
+/**
+ * Riot's computed per-game metrics (match-v5 `participant.challenges`).
+ * Riot ships ~127 of these; we type the ones we actually consume. Every field
+ * is optional: older matches and some modes omit the object entirely.
+ */
+export interface ParticipantChallenges {
+  // Laning
+  laneMinionsFirst10Minutes?: number;
+  jungleCsBefore10Minutes?: number;
+  maxCsAdvantageOnLaneOpponent?: number;
+  laningPhaseGoldExpAdvantage?: number;
+  earlyLaningPhaseGoldExpAdvantage?: number;
+  maxLevelLeadLaneOpponent?: number;
+  visionScoreAdvantageLaneOpponent?: number;
+  turretPlatesTaken?: number;
+  // Impact
+  killParticipation?: number; // 0..1
+  teamDamagePercentage?: number; // 0..1
+  damageTakenOnTeamPercentage?: number; // 0..1
+  damagePerMinute?: number;
+  goldPerMinute?: number;
+  visionScorePerMinute?: number;
+  soloKills?: number;
+  takedowns?: number;
+  kda?: number;
+  // Mechanics
+  skillshotsHit?: number;
+  skillshotsDodged?: number;
+  enemyChampionImmobilizations?: number;
+  abilityUses?: number;
+  dodgeSkillShotsSmallWindow?: number;
+  landSkillShotsEarlyGame?: number;
+  // Risk / deaths
+  deathsByEnemyChamps?: number;
+  bountyGold?: number;
+  maxKillDeficit?: number;
+  killsUnderOwnTurret?: number;
+  killsNearEnemyTurret?: number;
+  // Objectives
+  dragonTakedowns?: number;
+  baronTakedowns?: number;
+  riftHeraldTakedowns?: number;
+  turretTakedowns?: number;
+  epicMonsterSteals?: number;
+  epicMonsterStolenWithoutSmite?: number;
+  soloBaronKills?: number;
+  teamBaronKills?: number;
+  // Vision
+  stealthWardsPlaced?: number;
+  controlWardsPlaced?: number;
+  wardTakedowns?: number;
+  wardTakedownsBefore20M?: number;
+  wardsGuarded?: number;
+  twoWardsOneSweeperCount?: number;
+  // Support
+  effectiveHealAndShielding?: number;
+  saveAllyFromDeath?: number;
+  immobilizeAndKillWithAlly?: number;
+  pickKillWithAlly?: number;
+  knockEnemyIntoTeamAndKill?: number;
+  completeSupportQuestInTime?: number;
+  // Jungle
+  alliedJungleMonsterKills?: number;
+  enemyJungleMonsterKills?: number;
+  moreEnemyJungleThanOpponent?: number;
+  scuttleCrabKills?: number;
+  initialCrabCount?: number;
+  killsOnLanersEarlyJungleAsJungler?: number;
+  // Highlights
+  perfectGame?: number;
+  flawlessAces?: number;
+  acesBefore15Minutes?: number;
+  multikills?: number;
+  multiKillOneSpell?: number;
+  killingSprees?: number;
+  legendaryCount?: number;
+  outnumberedKills?: number;
+  quickSoloKills?: number;
+  survivedSingleDigitHpCount?: number;
+  survivedThreeImmobilizesInFight?: number;
+  takedownsInEnemyFountain?: number;
+  takedownsInAlcove?: number;
+  unseenRecalls?: number;
+  hadOpenNexus?: number;
+  "12AssistStreakCount"?: number; // Riot's key literally starts with a digit
+  gameLength?: number;
+  playedChampSelectPosition?: number;
+}
+
 // Events carry different fields per type; we model only what we consume.
 export interface TimelineEvent {
   type: string;
@@ -195,6 +298,9 @@ export interface TimelineEvent {
   afterId?: number;
   killerId?: number;
   victimId?: number;
+  // Map coordinates (Summoner's Rift spans roughly 0..14870 on both axes,
+  // with y growing upward — the opposite of SVG).
+  position?: { x: number; y: number };
 }
 
 export interface TimelineFrame {

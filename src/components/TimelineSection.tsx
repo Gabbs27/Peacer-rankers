@@ -3,11 +3,13 @@
 import { useEffect, useId, useState } from "react";
 import type { TimelineInsights, GoldDiffPoint, TimelineFlag } from "@/lib/timeline-insights";
 import ItemIcon from "./ItemIcon";
+import DeathMap from "./DeathMap";
 
 interface Props {
   matchId: string;
   region: string;
   puuid: string;
+  mapId: number;
 }
 
 const FLAG_STYLES: Record<TimelineFlag["severity"], { dot: string; text: string; srLabel: string }> = {
@@ -66,7 +68,7 @@ function DiffChip({ label, value }: { label: string; value: number | null }) {
   );
 }
 
-export default function TimelineSection({ matchId, region, puuid }: Props) {
+export default function TimelineSection({ matchId, region, puuid, mapId }: Props) {
   const headingId = useId();
   const [insights, setInsights] = useState<TimelineInsights | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +113,7 @@ export default function TimelineSection({ matchId, region, puuid }: Props) {
     );
   }
 
-  const { laning, goldDiffSeries, buildOrder, flags, opponentChampion } = insights;
+  const { laning, goldDiffSeries, buildOrder, flags, opponentChampion, deaths } = insights;
 
   return (
     <section aria-labelledby={headingId} className="space-y-3">
@@ -157,6 +159,8 @@ export default function TimelineSection({ matchId, region, puuid }: Props) {
           })}
         </ul>
       )}
+
+      {deaths && deaths.length > 0 && <DeathMap deaths={deaths} mapId={mapId} />}
 
       {buildOrder.length > 0 && (
         <div>
