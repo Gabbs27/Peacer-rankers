@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useSyncExternalStore } from "react";
 import { MatchData, LeagueEntry } from "@/lib/types";
 import MatchOverview from "./MatchOverview";
 import MatchCard from "./MatchCard";
@@ -17,6 +17,27 @@ interface Props {
   riotId: string;
   ranked: LeagueEntry[];
 }
+
+// Client-only "today"/"yesterday" keys. Reading the clock during render is
+// impure and would make the server and client disagree about the current day,
+// so we expose it via useSyncExternalStore: the server snapshot is null (we
+// render the absolute date) and the client snapshot is computed once and cached
+// so the reference stays stable across renders.
+const neverChanges = () => () => {};
+let cachedNowKeys: { today: string; yesterday: string } | null = null;
+
+function getNowKeys(): { today: string; yesterday: string } {
+  if (!cachedNowKeys) {
+    const now = Date.now();
+    cachedNowKeys = {
+      today: new Date(now).toISOString().slice(0, 10),
+      yesterday: new Date(now - 86400000).toISOString().slice(0, 10),
+    };
+  }
+  return cachedNowKeys;
+}
+
+const getNowKeysOnServer = () => null;
 
 const QUEUE_OPTIONS = [
   { label: "Todas", value: "" },
@@ -35,6 +56,7 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
   const [champFilter, setChampFilter] = useState("");
   const [resultFilter, setResultFilter] = useState<"" | "win" | "loss">("");
   const [roleFilter, setRoleFilter] = useState("");
+  const nowKeys = useSyncExternalStore(neverChanges, getNowKeys, getNowKeysOnServer);
 
   const fetchMatches = useCallback(async (start: number, queue: string, replace: boolean) => {
     setLoading(true);
@@ -82,21 +104,24 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
   )] as string[];
 
   // Group the (newest-first) list by calendar day, with a per-day W/L summary.
-  // Days are keyed in UTC so server and client agree during hydration.
+  // Days are keyed in UTC so the grouping itself is deterministic.
+  //
+  // "Hoy"/"Ayer" depend on the CURRENT time, which is impure and differs between
+  // server and client — so we resolve them after mount (see `nowKeys`) and render
+  // the absolute date until then. That keeps render pure and hydration stable.
   const dayGroups: { key: string; label: string; wins: number; losses: number; items: MatchData[] }[] = [];
   for (const m of filteredMatches) {
     const date = new Date(m.info.gameCreation);
     const key = date.toISOString().slice(0, 10);
     let group = dayGroups[dayGroups.length - 1];
     if (!group || group.key !== key) {
-      const todayKey = new Date().toISOString().slice(0, 10);
-      const yesterdayKey = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const absolute = date.toLocaleDateString("es", {
+        day: "numeric",
+        month: "short",
+        timeZone: "UTC",
+      });
       const label =
-        key === todayKey
-          ? "Hoy"
-          : key === yesterdayKey
-            ? "Ayer"
-            : date.toLocaleDateString("es", { day: "numeric", month: "short", timeZone: "UTC" });
+        key === nowKeys?.today ? "Hoy" : key === nowKeys?.yesterday ? "Ayer" : absolute;
       group = { key, label, wins: 0, losses: 0, items: [] };
       dayGroups.push(group);
     }
@@ -176,10 +201,7 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
           {dayGroups.map((group) => (
             <div key={group.key} className="space-y-3">
               <div className="flex items-center gap-3 pt-2">
-                <span
-                  suppressHydrationWarning
-                  className="font-display text-sm font-semibold text-[#e3c98a]"
-                >
+                <span className="font-display text-sm font-semibold text-[#e3c98a]">
                   {group.label}
                 </span>
                 <span className="text-xs text-gray-400">
