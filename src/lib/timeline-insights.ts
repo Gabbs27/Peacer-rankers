@@ -31,6 +31,13 @@ export interface BuildEvent {
   minute: number;
 }
 
+/** Where and when the player died (map coords, Riot's axes). */
+export interface DeathPoint {
+  x: number;
+  y: number;
+  minute: number;
+}
+
 export interface TimelineFlag {
   severity: "good" | "warn" | "bad";
   message: string;
@@ -43,6 +50,7 @@ export interface TimelineInsights {
   goldDiffSeries: GoldDiffPoint[] | null;
   laning: LaningStats | null;
   buildOrder: BuildEvent[];
+  deaths: DeathPoint[];
   flags: TimelineFlag[];
 }
 
@@ -142,15 +150,24 @@ export function extractBuildOrder(timeline: TimelineData, participantId: number)
 }
 
 function playerDeaths(timeline: TimelineData, participantId: number): number[] {
-  const minutes: number[] = [];
+  return playerDeathPoints(timeline, participantId).map((d) => d.minute);
+}
+
+/** Death events for the player, with map position when Riot provides it. */
+function playerDeathPoints(timeline: TimelineData, participantId: number): DeathPoint[] {
+  const points: DeathPoint[] = [];
   for (const frame of timeline.info.frames) {
     for (const ev of frame.events ?? []) {
       if (ev.type === "CHAMPION_KILL" && ev.victimId === participantId) {
-        minutes.push(eventMinute(ev.timestamp));
+        points.push({
+          x: ev.position?.x ?? -1,
+          y: ev.position?.y ?? -1,
+          minute: eventMinute(ev.timestamp),
+        });
       }
     }
   }
-  return minutes;
+  return points;
 }
 
 /** Diff at `minute`, or null when the series doesn't cover that minute. */
@@ -294,6 +311,8 @@ export function analyzeTimeline(
     goldDiffSeries,
     laning,
     buildOrder,
+    // Only positioned deaths are useful for the map; unpositioned ones are dropped.
+    deaths: playerDeathPoints(timeline, playerId).filter((d) => d.x >= 0 && d.y >= 0),
     flags,
   };
 }
