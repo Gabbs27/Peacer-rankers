@@ -9,6 +9,10 @@ import LossPatternPanel from "./LossPatternPanel";
 import FormPanel from "./FormPanel";
 import TeammatesPanel from "./TeammatesPanel";
 import WinFormulaPanel from "./WinFormulaPanel";
+import TodayPlan from "./TodayPlan";
+import TiltPanel from "./TiltPanel";
+import MatchupsPanel from "./MatchupsPanel";
+import GoalsPanel from "./GoalsPanel";
 
 interface Props {
   initialMatches: MatchData[];
@@ -51,7 +55,8 @@ const QUEUE_OPTIONS = [
 export default function SummonerContent({ initialMatches, puuid, region, riotId, ranked }: Props) {
   const [matches, setMatches] = useState<MatchData[]>(initialMatches);
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(initialMatches.length === 10);
+  // The profile seeds a larger sample; assume more exist unless it came back short.
+  const [hasMore, setHasMore] = useState(initialMatches.length > 0);
   const [queueFilter, setQueueFilter] = useState("");
   const [champFilter, setChampFilter] = useState("");
   const [resultFilter, setResultFilter] = useState<"" | "win" | "loss">("");
@@ -135,11 +140,15 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
 
   return (
     <>
+      <TodayPlan matches={matches} puuid={puuid} />
       <FormPanel matches={matches} puuid={puuid} />
       <MatchOverview matches={matches} puuid={puuid} profileHref={`/summoner/${region}/${riotId}`} />
       <WinFormulaPanel matches={matches} puuid={puuid} />
       <TrendsPanel matches={matches} puuid={puuid} />
       <LossPatternPanel matches={matches} puuid={puuid} />
+      <TiltPanel matches={matches} puuid={puuid} />
+      <MatchupsPanel matches={matches} puuid={puuid} />
+      <GoalsPanel matches={matches} puuid={puuid} />
       <TeammatesPanel matches={matches} puuid={puuid} region={region} />
 
       <div>

@@ -298,6 +298,22 @@ export interface TimelineEvent {
   afterId?: number;
   killerId?: number;
   victimId?: number;
+  // SKILL_LEVEL_UP
+  skillSlot?: number; // 1=Q 2=W 3=E 4=R
+  levelUpType?: string;
+  // WARD_PLACED / WARD_KILL
+  creatorId?: number;
+  wardType?: string;
+  // ELITE_MONSTER_KILL
+  killerTeamId?: number;
+  monsterType?: string; // DRAGON | BARON_NASHOR | RIFTHERALD | HORDE
+  monsterSubType?: string;
+  // BUILDING_KILL / TURRET_PLATE_DESTROYED — `teamId` is the team that OWNED
+  // the destroyed structure, i.e. the team that lost it.
+  teamId?: number;
+  buildingType?: string;
+  towerType?: string;
+  laneType?: string;
   // Map coordinates (Summoner's Rift spans roughly 0..14870 on both axes,
   // with y growing upward — the opposite of SVG).
   position?: { x: number; y: number };

@@ -22,6 +22,13 @@ interface PageProps {
   params: Promise<{ region: string; riotId: string }>;
 }
 
+// How many matches back the profile analyses look. Every aggregate panel (win
+// formula, loss pattern, tilt, matchups, teammates, trends) reads this sample,
+// so it is the single biggest lever on their quality. Kept at 30 rather than 50
+// to stay well inside the development key's 100 requests / 2 min budget; the
+// match cache is 24h so repeat loads are free.
+const PROFILE_MATCH_SAMPLE = 30;
+
 export async function generateMetadata({ params }: PageProps) {
   const { riotId } = await params;
   const decoded = decodeURIComponent(riotId);
@@ -82,7 +89,7 @@ export default async function SummonerPage({ params }: PageProps) {
     const [summoner, ranked, matchIds, ddragonVersion, mastery, challenges] = await Promise.all([
       getSummonerByPuuid(account.puuid, region),
       getLeagueEntries(account.puuid, region),
-      getMatchIds(account.puuid, region, 10),
+      getMatchIds(account.puuid, region, PROFILE_MATCH_SAMPLE),
       getDDragonVersion(),
       // Non-critical extras — degrade gracefully if the key lacks access.
       getChampionMastery(account.puuid, region, 8).catch(() => [] as ChampionMastery[]),
