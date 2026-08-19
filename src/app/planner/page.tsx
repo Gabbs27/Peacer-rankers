@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { getChampionIconUrl, getItemIconUrl, getMobafireSearchUrl, getUGGChampionUrl } from "@/lib/data-dragon";
 import { loadChampionList, type ChampionListEntry } from "@/lib/champion-client";
+import PlannerHistory from "@/components/PlannerHistory";
 import { getRuneRecommendation } from "@/lib/runes";
 import { getBuildPath } from "@/lib/build-paths";
 import { getChampionDamageType } from "@/lib/champion-data";
@@ -304,6 +305,13 @@ export default function PlannerPage() {
       {hasResults && runes && build && compAnalysis && selectedChampion && (
         <section aria-label="Recomendaciones de build" className="bg-gray-700/50 rounded-xl p-5 space-y-6">
           <h2 className="text-xl font-bold text-orange-400">Recomendaciones</h2>
+
+          {/* Optional: cross the picked comp with the user's own record */}
+          <PlannerHistory
+            championId={selectedChampion.id}
+            enemyIds={enemies.map((e) => e.id)}
+            role={selectedRole}
+          />
 
           {/* Enemy Comp Analysis */}
           <div className="space-y-2">

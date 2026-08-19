@@ -113,7 +113,7 @@ export default function TimelineSection({ matchId, region, puuid, mapId }: Props
     );
   }
 
-  const { laning, goldDiffSeries, buildOrder, flags, opponentChampion, deaths } = insights;
+  const { laning, goldDiffSeries, buildOrder, flags, opponentChampion, deaths, skillOrder, wards, objectives, plates } = insights;
 
   return (
     <section aria-labelledby={headingId} className="space-y-3">
@@ -161,6 +161,85 @@ export default function TimelineSection({ matchId, region, puuid, mapId }: Props
       )}
 
       {deaths && deaths.length > 0 && <DeathMap deaths={deaths} mapId={mapId} />}
+
+      {/* Ability levelling */}
+      {skillOrder && skillOrder.sequence.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-300 uppercase mb-1">
+            Orden de habilidades
+            {skillOrder.maxOrder && (
+              <span className="text-[#e3c98a] normal-case ml-2">maxeo: {skillOrder.maxOrder}</span>
+            )}
+          </p>
+          <ol className="flex flex-wrap gap-1">
+            {skillOrder.sequence.map((slot, i) => (
+              <li
+                key={i}
+                className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center ${
+                  slot === 4
+                    ? "bg-[#c8aa6e] text-gray-950"
+                    : "bg-gray-700 text-gray-200"
+                }`}
+                title={`Nivel ${i + 1}`}
+              >
+                {slot === 1 ? "Q" : slot === 2 ? "W" : slot === 3 ? "E" : "R"}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {/* Objectives timeline */}
+      {objectives.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-300 uppercase mb-1">Objetivos</p>
+          <ul className="flex flex-wrap gap-1.5">
+            {objectives.map((o, i) => (
+              <li
+                key={i}
+                className={`text-[11px] rounded px-2 py-0.5 border ${
+                  o.byMyTeam
+                    ? "border-blue-500/40 bg-blue-950/30 text-blue-200"
+                    : "border-red-500/40 bg-red-950/30 text-red-200"
+                }`}
+                title={o.byMyTeam ? "Tu equipo" : "Equipo enemigo"}
+              >
+                {o.minute}&apos; {o.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Vision + plates */}
+      <div className="flex flex-wrap gap-2">
+        <div className="bg-gray-700/40 rounded px-2 py-1 text-xs">
+          <span className="text-gray-300">Wards puestos: </span>
+          <span className="text-gray-100 font-semibold">{wards.placed}</span>
+          {wards.controlWards > 0 && (
+            <span className="text-gray-500"> ({wards.controlWards} de control)</span>
+          )}
+        </div>
+        <div className="bg-gray-700/40 rounded px-2 py-1 text-xs">
+          <span className="text-gray-300">Wards destruidos: </span>
+          <span className="text-gray-100 font-semibold">{wards.killed}</span>
+        </div>
+        {wards.firstWardMinute !== null && (
+          <div className="bg-gray-700/40 rounded px-2 py-1 text-xs">
+            <span className="text-gray-300">Primer ward: </span>
+            <span className="text-gray-100 font-semibold">min {wards.firstWardMinute}</span>
+          </div>
+        )}
+        {(plates.taken > 0 || plates.conceded > 0) && (
+          <div className="bg-gray-700/40 rounded px-2 py-1 text-xs">
+            <span className="text-gray-300">Placas: </span>
+            <span className="text-emerald-300 font-semibold">{plates.taken}</span>
+            <span className="text-gray-500"> tomadas · </span>
+            <span className="text-red-300 font-semibold">{plates.conceded}</span>
+            <span className="text-gray-500"> cedidas</span>
+          </div>
+        )}
+      </div>
 
       {buildOrder.length > 0 && (
         <div>
