@@ -44,6 +44,33 @@ export interface TimelineFlag {
   minute?: number;
 }
 
+/** Ability levelling: the order taken and which skill was maxed first. */
+export interface SkillOrder {
+  /** Slots in the order they were levelled (1=Q, 2=W, 3=E, 4=R). */
+  sequence: number[];
+  /** e.g. "Q > E > W" — the order Q/W/E reached rank 5 (or ended highest). */
+  maxOrder: string;
+}
+
+export interface WardStats {
+  placed: number;
+  killed: number;
+  controlWards: number;
+  firstWardMinute: number | null;
+}
+
+export interface ObjectiveEvent {
+  kind: "DRAGON" | "BARON" | "HERALD" | "TOWER" | "INHIBITOR" | "OTHER";
+  label: string;
+  minute: number;
+  byMyTeam: boolean;
+}
+
+export interface PlateStats {
+  taken: number;
+  conceded: number;
+}
+
 export interface TimelineInsights {
   playerChampion: string;
   opponentChampion: string | null;
@@ -51,6 +78,10 @@ export interface TimelineInsights {
   laning: LaningStats | null;
   buildOrder: BuildEvent[];
   deaths: DeathPoint[];
+  skillOrder: SkillOrder | null;
+  wards: WardStats;
+  objectives: ObjectiveEvent[];
+  plates: PlateStats;
   flags: TimelineFlag[];
 }
 
@@ -180,6 +211,137 @@ function goldDiffAtMinute(diffs: GoldDiffPoint[], minute: number): number | null
   return best ? best.diff : null;
 }
 
+const SKILL_LABELS: Record<number, string> = { 1: "Q", 2: "W", 3: "E", 4: "R" };
+const CONTROL_WARD_TYPES = new Set(["CONTROL_WARD"]);
+
+/** Ability level-ups for one participant, plus the inferred max order. */
+function extractSkillOrder(timeline: TimelineData, participantId: number): SkillOrder | null {
+  const sequence: number[] = [];
+  for (const frame of timeline.info.frames) {
+    for (const ev of frame.events ?? []) {
+      if (ev.type !== "SKILL_LEVEL_UP" || ev.participantId !== participantId) continue;
+      if (typeof ev.skillSlot !== "number") continue;
+      sequence.push(ev.skillSlot);
+    }
+  }
+  if (sequence.length === 0) return null;
+
+  // Max order: when each of Q/W/E reached rank 5. Skills that never get there
+  // fall back to their final rank so the order is still meaningful in short games.
+  const counts = new Map<number, number>();
+  const reachedFive = new Map<number, number>();
+  sequence.forEach((slot, index) => {
+    const next = (counts.get(slot) ?? 0) + 1;
+    counts.set(slot, next);
+    if (next === 5 && !reachedFive.has(slot)) reachedFive.set(slot, index);
+  });
+
+  const basicSlots = [1, 2, 3].filter((slot) => (counts.get(slot) ?? 0) > 0);
+  basicSlots.sort((a, b) => {
+    const fa = reachedFive.get(a) ?? Infinity;
+    const fb = reachedFive.get(b) ?? Infinity;
+    if (fa !== fb) return fa - fb;
+    return (counts.get(b) ?? 0) - (counts.get(a) ?? 0);
+  });
+
+  return {
+    sequence,
+    maxOrder: basicSlots.map((slot) => SKILL_LABELS[slot]).join(" > "),
+  };
+}
+
+function extractWards(timeline: TimelineData, participantId: number): WardStats {
+  let placed = 0;
+  let killed = 0;
+  let controlWards = 0;
+  let firstWardMinute: number | null = null;
+
+  for (const frame of timeline.info.frames) {
+    for (const ev of frame.events ?? []) {
+      if (ev.type === "WARD_PLACED" && ev.creatorId === participantId) {
+        placed++;
+        if (ev.wardType && CONTROL_WARD_TYPES.has(ev.wardType)) controlWards++;
+        if (firstWardMinute === null) firstWardMinute = eventMinute(ev.timestamp);
+      } else if (ev.type === "WARD_KILL" && ev.killerId === participantId) {
+        killed++;
+      }
+    }
+  }
+  return { placed, killed, controlWards, firstWardMinute };
+}
+
+const DRAGON_LABELS: Record<string, string> = {
+  FIRE_DRAGON: "Dragón de fuego",
+  WATER_DRAGON: "Dragón de agua",
+  EARTH_DRAGON: "Dragón de tierra",
+  AIR_DRAGON: "Dragón de viento",
+  HEXTECH_DRAGON: "Dragón hextech",
+  CHEMTECH_DRAGON: "Dragón químtech",
+  ELDER_DRAGON: "Dragón anciano",
+};
+
+/**
+ * Epic monsters and structures, with who got them. Riot reports BUILDING_KILL
+ * `teamId` as the team that OWNED (lost) the structure, so ownership is flipped.
+ */
+function extractObjectives(
+  timeline: TimelineData,
+  myTeamId: number,
+  participantTeams: Map<number, number>
+): ObjectiveEvent[] {
+  const out: ObjectiveEvent[] = [];
+
+  for (const frame of timeline.info.frames) {
+    for (const ev of frame.events ?? []) {
+      const minute = eventMinute(ev.timestamp);
+
+      if (ev.type === "ELITE_MONSTER_KILL") {
+        const killerTeam =
+          ev.killerTeamId ?? (ev.killerId ? participantTeams.get(ev.killerId) : undefined);
+        if (killerTeam === undefined) continue;
+        const monster = ev.monsterType ?? "";
+        const kind: ObjectiveEvent["kind"] =
+          monster === "DRAGON" ? "DRAGON" : monster === "BARON_NASHOR" ? "BARON" : monster === "RIFTHERALD" ? "HERALD" : "OTHER";
+        if (kind === "OTHER") continue; // skip voidgrubs/scuttle noise
+        const label =
+          kind === "DRAGON"
+            ? DRAGON_LABELS[ev.monsterSubType ?? ""] ?? "Dragón"
+            : kind === "BARON"
+              ? "Barón"
+              : "Heraldo";
+        out.push({ kind, label, minute, byMyTeam: killerTeam === myTeamId });
+      } else if (ev.type === "BUILDING_KILL") {
+        const ownerTeam = ev.teamId;
+        if (ownerTeam === undefined) continue;
+        const isTower = (ev.buildingType ?? "TOWER_BUILDING") === "TOWER_BUILDING";
+        out.push({
+          kind: isTower ? "TOWER" : "INHIBITOR",
+          label: isTower ? "Torre" : "Inhibidor",
+          minute,
+          // The structure belonged to the OTHER team when we destroyed it.
+          byMyTeam: ownerTeam !== myTeamId,
+        });
+      }
+    }
+  }
+  return out.sort((a, b) => a.minute - b.minute);
+}
+
+function extractPlates(timeline: TimelineData, myTeamId: number): PlateStats {
+  let taken = 0;
+  let conceded = 0;
+  for (const frame of timeline.info.frames) {
+    for (const ev of frame.events ?? []) {
+      if (ev.type !== "TURRET_PLATE_DESTROYED") continue;
+      // `teamId` is the team that owned the plated turret, i.e. who lost the plate.
+      if (ev.teamId === undefined) continue;
+      if (ev.teamId === myTeamId) conceded++;
+      else taken++;
+    }
+  }
+  return { taken, conceded };
+}
+
 export function analyzeTimeline(
   timeline: TimelineData,
   match: MatchData,
@@ -246,6 +408,17 @@ export function analyzeTimeline(
   }
 
   const buildOrder = extractBuildOrder(timeline, playerId);
+  const skillOrder = extractSkillOrder(timeline, playerId);
+  const wards = extractWards(timeline, playerId);
+  const plates = extractPlates(timeline, player.teamId);
+
+  // participantId -> teamId, to attribute objective kills when killerTeamId is absent.
+  const participantTeams = new Map<number, number>();
+  match.info.participants.forEach((p, index) => {
+    const id = participantIdFor(timeline, p.puuid) ?? index + 1;
+    participantTeams.set(id, p.teamId);
+  });
+  const objectives = extractObjectives(timeline, player.teamId, participantTeams);
 
   // --- Rule-based flags ---
   const flags: TimelineFlag[] = [];
@@ -313,6 +486,10 @@ export function analyzeTimeline(
     buildOrder,
     // Only positioned deaths are useful for the map; unpositioned ones are dropped.
     deaths: playerDeathPoints(timeline, playerId).filter((d) => d.x >= 0 && d.y >= 0),
+    skillOrder,
+    wards,
+    objectives,
+    plates,
     flags,
   };
 }

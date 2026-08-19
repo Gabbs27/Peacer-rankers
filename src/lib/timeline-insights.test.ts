@@ -233,3 +233,86 @@ describe("extractBuildOrder", () => {
     expect(order[1].minute).toBe(14);
   });
 });
+
+describe("timeline extras (skills, wards, objectives, plates)", () => {
+  function withEvents(events: Record<string, unknown>[]) {
+    const frames = makeFrames(15);
+    frames[5].events.push(...(events as never[]));
+    return makeTimeline(frames);
+  }
+
+  it("reads the ability level-up sequence and infers the max order", () => {
+    // Q x5 first, then E x5, then W — so max order is Q > E > W.
+    const seq: Record<string, unknown>[] = [];
+    const push = (slot: number) =>
+      seq.push({ type: "SKILL_LEVEL_UP", timestamp: 60000 * seq.length, participantId: 1, skillSlot: slot });
+    for (let i = 0; i < 5; i++) push(1);
+    for (let i = 0; i < 5; i++) push(3);
+    for (let i = 0; i < 5; i++) push(2);
+    const insights = analyzeTimeline(withEvents(seq), makeMatch(), "p1")!;
+    expect(insights.skillOrder).not.toBeNull();
+    expect(insights.skillOrder!.maxOrder).toBe("Q > E > W");
+    expect(insights.skillOrder!.sequence).toHaveLength(15);
+  });
+
+  it("counts wards placed, killed and control wards", () => {
+    const insights = analyzeTimeline(
+      withEvents([
+        { type: "WARD_PLACED", timestamp: 120000, creatorId: 1, wardType: "YELLOW_TRINKET" },
+        { type: "WARD_PLACED", timestamp: 180000, creatorId: 1, wardType: "CONTROL_WARD" },
+        { type: "WARD_PLACED", timestamp: 200000, creatorId: 6, wardType: "CONTROL_WARD" }, // enemy
+        { type: "WARD_KILL", timestamp: 240000, killerId: 1, wardType: "YELLOW_TRINKET" },
+      ]),
+      makeMatch(),
+      "p1"
+    )!;
+    expect(insights.wards.placed).toBe(2);
+    expect(insights.wards.controlWards).toBe(1);
+    expect(insights.wards.killed).toBe(1);
+    expect(insights.wards.firstWardMinute).toBe(2);
+  });
+
+  it("attributes epic monsters and flips building ownership", () => {
+    const insights = analyzeTimeline(
+      withEvents([
+        { type: "ELITE_MONSTER_KILL", timestamp: 480000, killerTeamId: 100, monsterType: "DRAGON", monsterSubType: "FIRE_DRAGON" },
+        { type: "ELITE_MONSTER_KILL", timestamp: 1200000, killerTeamId: 200, monsterType: "BARON_NASHOR" },
+        // My team (100) destroyed a tower that BELONGED to team 200.
+        { type: "BUILDING_KILL", timestamp: 900000, teamId: 200, buildingType: "TOWER_BUILDING" },
+        // We lost one of ours.
+        { type: "BUILDING_KILL", timestamp: 960000, teamId: 100, buildingType: "TOWER_BUILDING" },
+        // Noise that should be filtered out.
+        { type: "ELITE_MONSTER_KILL", timestamp: 300000, killerTeamId: 100, monsterType: "HORDE" },
+      ]),
+      makeMatch(),
+      "p1"
+    )!;
+    const dragon = insights.objectives.find((o) => o.kind === "DRAGON")!;
+    expect(dragon.byMyTeam).toBe(true);
+    expect(dragon.label).toBe("Dragón de fuego");
+    expect(dragon.minute).toBe(8);
+
+    expect(insights.objectives.find((o) => o.kind === "BARON")!.byMyTeam).toBe(false);
+
+    const towers = insights.objectives.filter((o) => o.kind === "TOWER");
+    expect(towers).toHaveLength(2);
+    expect(towers.filter((t) => t.byMyTeam)).toHaveLength(1);
+
+    expect(insights.objectives.some((o) => o.kind === "OTHER")).toBe(false);
+    // Sorted chronologically
+    expect(insights.objectives.map((o) => o.minute)).toEqual([8, 15, 16, 20]);
+  });
+
+  it("splits turret plates taken vs conceded", () => {
+    const insights = analyzeTimeline(
+      withEvents([
+        { type: "TURRET_PLATE_DESTROYED", timestamp: 600000, teamId: 200 }, // we took it
+        { type: "TURRET_PLATE_DESTROYED", timestamp: 660000, teamId: 200 },
+        { type: "TURRET_PLATE_DESTROYED", timestamp: 720000, teamId: 100 }, // we lost it
+      ]),
+      makeMatch(),
+      "p1"
+    )!;
+    expect(insights.plates).toEqual({ taken: 2, conceded: 1 });
+  });
+});
