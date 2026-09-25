@@ -32,8 +32,8 @@ export default function BansRow({ bans }: Props) {
   if (real.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1.5 mb-2">
-      <span className="text-[10px] uppercase tracking-wider text-gray-500">Baneos</span>
+    <div className="flex items-center gap-1">
+      <span className="text-[10px] uppercase tracking-wider text-gray-500 mr-0.5">Bans</span>
       {real.map((b, i) => {
         const name = idMap[b.championId];
         return name ? (
