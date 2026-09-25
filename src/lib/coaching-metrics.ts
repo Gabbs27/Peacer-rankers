@@ -18,6 +18,12 @@ export interface MetricDef {
   /** Value for this participant, or null when the game/role doesn't provide it. */
   extract: (p: MatchParticipant, info: MatchInfo) => number | null;
   format: (v: number) => string;
+  /**
+   * Formatter for an AVERAGE over several games, when the per-game one would
+   * hide the difference (0.4 vs 0.1 control wards both round to "0"; lane
+   * advantage is 0/1 per game, so its average is a share of games).
+   */
+  formatAverage?: (v: number) => string;
   /** [badBelow, goodAbove] thresholds when higherIsBetter, inverted otherwise. */
   thresholds?: (role: string) => [number, number] | null;
   /** Restrict the metric to certain roles (undefined = all). */
@@ -26,6 +32,8 @@ export interface MetricDef {
 }
 
 const LANERS = ["TOP", "MIDDLE", "BOTTOM"];
+
+const oneDecimal = (v: number) => v.toFixed(1);
 
 function roleOf(p: MatchParticipant): string {
   return p.teamPosition || p.individualPosition || "";
@@ -67,6 +75,7 @@ export const METRICS: MetricDef[] = [
     roles: LANERS,
     extract: (p) => p.challenges?.laningPhaseGoldExpAdvantage ?? null,
     format: (v) => (v >= 1 ? "Ganada" : "No"),
+    formatAverage: (v) => `${Math.round(v * 100)}%`,
     thresholds: () => [1, 1],
     hint: "Riot marca 1 cuando dominaste tu línea en oro y experiencia.",
   },
@@ -87,6 +96,7 @@ export const METRICS: MetricDef[] = [
     higherIsBetter: true,
     extract: (p) => p.challenges?.turretPlatesTaken ?? null,
     format: (v) => `${Math.round(v)}`,
+    formatAverage: oneDecimal,
     thresholds: () => [1, 3],
     hint: "Las placas valen 160 de oro y caen al minuto 14.",
   },
@@ -137,6 +147,7 @@ export const METRICS: MetricDef[] = [
     higherIsBetter: true,
     extract: (p) => p.challenges?.soloKills ?? null,
     format: (v) => `${Math.round(v)}`,
+    formatAverage: oneDecimal,
     thresholds: () => [0, 2],
   },
 
@@ -188,6 +199,7 @@ export const METRICS: MetricDef[] = [
     higherIsBetter: false,
     extract: (p) => p.deaths,
     format: (v) => `${Math.round(v)}`,
+    formatAverage: oneDecimal,
     thresholds: () => [8, 4],
   },
   {
@@ -218,6 +230,7 @@ export const METRICS: MetricDef[] = [
     higherIsBetter: true,
     extract: (p) => p.challenges?.controlWardsPlaced ?? p.detectorWardsPlaced ?? null,
     format: (v) => `${Math.round(v)}`,
+    formatAverage: oneDecimal,
     thresholds: (role) => (role === "UTILITY" ? [2, 5] : [1, 3]),
     hint: "75 de oro que previenen muertes por emboscada.",
   },
@@ -228,6 +241,7 @@ export const METRICS: MetricDef[] = [
     higherIsBetter: true,
     extract: (p) => p.challenges?.wardTakedowns ?? p.wardsKilled ?? null,
     format: (v) => `${Math.round(v)}`,
+    formatAverage: oneDecimal,
     thresholds: () => [2, 6],
   },
 
@@ -248,6 +262,7 @@ export const METRICS: MetricDef[] = [
     higherIsBetter: true,
     extract: (p) => p.challenges?.dragonTakedowns ?? null,
     format: (v) => `${Math.round(v)}`,
+    formatAverage: oneDecimal,
     thresholds: () => [1, 3],
   },
   {
@@ -257,6 +272,7 @@ export const METRICS: MetricDef[] = [
     higherIsBetter: true,
     extract: (p) => p.challenges?.turretTakedowns ?? p.turretKills ?? null,
     format: (v) => `${Math.round(v)}`,
+    formatAverage: oneDecimal,
     thresholds: () => [1, 4],
   },
 ];
