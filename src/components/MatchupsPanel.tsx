@@ -17,8 +17,8 @@ export default function MatchupsPanel({ matches, puuid }: Props) {
   const best = [...records].reverse().slice(0, 3).filter((r) => r.winrate >= 60);
 
   return (
-    <section aria-label="Matchups de línea" className="panel p-5 rise rise-4">
-      <h3 className="section-title text-lg font-bold text-gray-100 mb-3">
+    <section aria-label="Matchups de línea" className="panel p-5">
+      <h3 className="section-title text-base font-bold text-gray-100 mb-3">
         Tus matchups
         <span className="text-xs text-gray-500 font-sans font-normal">
           (rival directo de tu línea · mínimo 2 partidas)

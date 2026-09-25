@@ -39,11 +39,11 @@ export default async function RootLayout({
           </a>
           <nav
             aria-label="Navegación principal"
-            className="sticky top-0 z-40 border-b border-[#c8aa6e]/20 bg-gray-950/80 backdrop-blur-md px-4 sm:px-6 py-4 flex items-center gap-4 sm:gap-6"
+            className="sticky top-0 z-40 border-b border-[#c8aa6e]/20 bg-gray-950/80 backdrop-blur-md px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-6"
           >
             <Link
               href="/"
-              className="font-display text-lg sm:text-xl font-bold text-[#f0e6d2] hover:text-[#e3c98a] transition-colors focus-ring rounded flex items-center gap-2"
+              className="font-display text-lg sm:text-xl font-bold text-[#f0e6d2] hover:text-[#e3c98a] transition-colors focus-ring rounded flex items-center gap-2 whitespace-nowrap shrink-0"
             >
               <svg
                 aria-hidden

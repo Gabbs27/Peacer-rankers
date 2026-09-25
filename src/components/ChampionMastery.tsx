@@ -39,9 +39,9 @@ export default function ChampionMasterySection({ mastery, profileHref }: Props) 
   if (mastery.length === 0) return null;
 
   return (
-    <section aria-label="Maestría de campeones" className="panel p-4 rise rise-2">
-      <h2 className="section-title text-lg font-semibold text-gray-100 mb-3">Maestría de campeones</h2>
-      <ul className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+    <section aria-label="Maestría de campeones" className="panel p-4 sm:p-5">
+      <h3 className="section-title text-base font-bold text-gray-100 mb-3">Maestría</h3>
+      <ul className="grid grid-cols-4 gap-3">
         {mastery.map((m) => {
           const name = idToName[m.championId];
           return (

@@ -135,7 +135,7 @@ body::before {
 /* ---------- Chrome ---------- */
 @layer base {
   .skip-link {
-    @apply absolute -top-10 left-4 bg-blue-600 text-white px-4 py-2 rounded z-50 transition-all;
+    @apply absolute -top-20 left-4 bg-blue-600 text-white px-4 py-2 rounded z-50 transition-all;
   }
   .skip-link:focus {
     @apply top-4;
@@ -146,6 +146,14 @@ body::before {
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0ac8b9] focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900;
   }
+}
+
+/* Horizontal strips (tab bars) scroll without showing a scrollbar */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Screen reader only utility */
@@ -195,5 +203,25 @@ body::before {
   button, a, [role="button"] {
     min-height: 44px;
     min-width: 44px;
+  }
+}
+
+/* Tab panels fade in on switch (short: switching should feel instant) */
+@keyframes tab-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tab-enter {
+  animation: tab-enter 0.22s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-enter {
+    animation: none;
   }
 }

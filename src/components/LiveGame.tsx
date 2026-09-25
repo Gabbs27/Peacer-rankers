@@ -100,35 +100,18 @@ export default function LiveGame({ puuid, region, matches = [] }: LiveGameProps)
     };
   }, [puuid, region, ddragonVersion]);
 
-  if (loading) {
-    return (
-      <div className="panel p-4 animate-pulse">
-        <div className="h-4 bg-gray-700 rounded w-48" />
-      </div>
-    );
-  }
-
-  if (is403) {
-    return (
-      <p className="text-xs text-gray-500 text-center">
-        La API de espectador no está disponible con esta API key
-      </p>
-    );
-  }
+  // Nothing to show until there is a live game: the banner appears on its own
+  // when one starts. A key without spectator access just never shows it.
+  if (loading || is403) return null;
 
   if (!data || !data.inGame || !data.game) {
     return (
-      <div className="panel px-4 py-2.5 flex items-center justify-between text-xs text-gray-400">
-        <span className="flex items-center gap-2">
-          <span className="inline-flex rounded-full h-2 w-2 bg-gray-500" aria-hidden />
-          No está en partida ahora mismo
-        </span>
-        <span className="text-gray-500">
-          Se comprueba cada minuto
-          {lastChecked &&
-            ` · última: ${lastChecked.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}`}
-        </span>
-      </div>
+      <p className="flex items-center gap-2 text-[11px] text-gray-500 px-1">
+        <span className="inline-flex rounded-full h-1.5 w-1.5 bg-gray-600" aria-hidden />
+        Sin partida en vivo · se comprueba cada minuto
+        {lastChecked &&
+          ` (${lastChecked.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })})`}
+      </p>
     );
   }
 

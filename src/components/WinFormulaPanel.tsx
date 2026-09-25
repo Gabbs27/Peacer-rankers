@@ -44,8 +44,8 @@ export default function WinFormulaPanel({ matches, puuid }: Props) {
   const shown = rows.filter((r) => r.helps).slice(0, 6);
 
   return (
-    <section aria-label="Tu fórmula de victoria" className="panel p-5 rise rise-3">
-      <h3 className="section-title text-lg font-bold text-gray-100 mb-3">
+    <section aria-label="Tu fórmula de victoria" className="panel p-5">
+      <h3 className="section-title text-base font-bold text-gray-100 mb-3">
         Tu fórmula de victoria
         <span className="text-xs text-gray-500 font-sans font-normal">
           ({wins}V vs {losses}D analizadas)

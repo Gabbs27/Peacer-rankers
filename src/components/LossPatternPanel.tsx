@@ -35,8 +35,8 @@ export default function LossPatternPanel({ matches, puuid }: Props) {
   const max = entries[0]?.[1] ?? 1;
 
   return (
-    <section aria-label="Patrón de derrotas" className="panel p-5 rise rise-3">
-      <h3 className="section-title text-lg font-bold text-gray-100 mb-3">
+    <section aria-label="Patrón de derrotas" className="panel p-5">
+      <h3 className="section-title text-base font-bold text-gray-100 mb-3">
         ¿Por qué pierdes?
         <span className="text-xs text-gray-500 font-sans font-normal">
           ({pattern.total} derrota{pattern.total > 1 ? "s" : ""} analizadas)
