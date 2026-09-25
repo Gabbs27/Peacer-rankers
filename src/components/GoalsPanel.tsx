@@ -26,8 +26,8 @@ export default function GoalsPanel({ matches, puuid }: Props) {
   const active = GOALS.filter((g) => selected.includes(g.id));
 
   return (
-    <section aria-label="Metas personales" className="panel p-5 rise rise-5">
-      <h3 className="section-title text-lg font-bold text-gray-100 mb-1">Tus metas</h3>
+    <section aria-label="Metas personales" className="panel p-5">
+      <h3 className="section-title text-base font-bold text-gray-100 mb-1">Tus metas</h3>
       <p className="text-xs text-gray-500 mb-4">
         Elige qué quieres mejorar; se evalúa sola en cada partida. Se guarda en este navegador.
       </p>

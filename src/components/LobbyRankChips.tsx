@@ -22,10 +22,10 @@ export default function LobbyRankChips({ player, matchInfo }: Props) {
   const ranks = lobbyRanks(player, matchInfo);
   return (
     <div>
-      <p className="text-xs text-gray-300 uppercase mb-1.5">Vs los 10 de la partida</p>
-      <div className="flex flex-wrap gap-2">
+      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">Vs los 10 de la partida</p>
+      <div className="flex flex-wrap gap-1.5">
         {ranks.map((r) => (
-          <div key={r.label} className="bg-gray-800/60 rounded px-2.5 py-1.5 text-xs">
+          <div key={r.label} className="bg-gray-900/60 rounded px-2 py-1 text-xs">
             <span className="text-gray-400">{r.label}: </span>
             <span className={`font-semibold ${rankColor(r.rank, r.total)}`}>
               {ordinal(r.rank)} de {r.total}

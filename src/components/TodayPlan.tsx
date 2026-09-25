@@ -23,7 +23,7 @@ export default function TodayPlan({ matches, puuid }: Props) {
   return (
     <section
       aria-label="Tu plan para la próxima partida"
-      className="panel panel-glow p-5 rise"
+      className="panel panel-glow p-5"
     >
       <h2 className="section-title text-lg font-bold text-gray-100 mb-1">
         Tu plan para la próxima partida

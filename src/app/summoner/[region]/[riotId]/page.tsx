@@ -13,8 +13,6 @@ import {
 import { getDDragonVersion } from "@/lib/data-dragon";
 import type { ChampionMastery, LeagueEntry, MatchData, PlayerChallenges, RiotAccount, Summoner } from "@/lib/types";
 import PlayerStats from "@/components/PlayerStats";
-import ChampionMasterySection from "@/components/ChampionMastery";
-import ChallengesSection from "@/components/ChallengesSection";
 import SummonerContent from "@/components/SummonerContent";
 import LiveGame from "@/components/LiveGame";
 
@@ -107,7 +105,7 @@ export default async function SummonerPage({ params }: PageProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <PlayerStats
         ranked={data.ranked}
         summonerLevel={data.summoner.summonerLevel}
@@ -116,9 +114,8 @@ export default async function SummonerPage({ params }: PageProps) {
         tagLine={data.account.tagLine}
         region={region}
         ddragonVersion={data.ddragonVersion}
+        challenges={data.challenges}
       />
-      <ChampionMasterySection mastery={data.mastery} profileHref={`/summoner/${region}/${riotId}`} />
-      <ChallengesSection challenges={data.challenges} />
       <LiveGame puuid={data.account.puuid} region={region} matches={data.matches} />
       <SummonerContent
         initialMatches={data.matches}
@@ -126,6 +123,7 @@ export default async function SummonerPage({ params }: PageProps) {
         region={region}
         riotId={riotId}
         ranked={data.ranked}
+        mastery={data.mastery}
       />
     </div>
   );

@@ -23,19 +23,6 @@ const tierColors: Record<string, string> = {
   CHALLENGER: "text-yellow-300",
 };
 
-const tierBgColors: Record<string, string> = {
-  IRON: "bg-gray-500/20",
-  BRONZE: "bg-amber-700/20",
-  SILVER: "bg-gray-400/20",
-  GOLD: "bg-yellow-500/20",
-  PLATINUM: "bg-teal-500/20",
-  EMERALD: "bg-emerald-500/20",
-  DIAMOND: "bg-blue-500/20",
-  MASTER: "bg-purple-500/20",
-  GRANDMASTER: "bg-red-500/20",
-  CHALLENGER: "bg-yellow-400/20",
-};
-
 function getBarColor(score: number): string {
   if (score >= 75) return "bg-emerald-500";
   if (score >= 55) return "bg-teal-500";
@@ -44,153 +31,94 @@ function getBarColor(score: number): string {
   return "bg-red-500";
 }
 
+function Bar({ label, value, hint }: { label: string; value: number; hint: string }) {
+  return (
+    <div title={hint}>
+      <div className="flex justify-between text-[11px] mb-1">
+        <span className="text-gray-400">{label}</span>
+        <span className="text-gray-100 font-semibold">{value}</span>
+      </div>
+      <div
+        className="h-1.5 bg-gray-800 rounded-full overflow-hidden"
+        role="progressbar"
+        aria-valuenow={value}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Puntuación ${label.toLowerCase()}`}
+      >
+        <div className={`h-full rounded-full ${getBarColor(value)}`} style={{ width: `${value}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function Breakdown({ title, items }: { title: string; items: PerformanceScoreType["microBreakdown"] }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{title}</p>
+      <ul className="space-y-2">
+        {items.map((b) => (
+          <li key={b.label}>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-300">{b.label}</span>
+              <span className="text-gray-200">
+                {b.score}/{b.maxScore}
+              </span>
+            </div>
+            <div className="h-1 bg-gray-800 rounded-full overflow-hidden mt-0.5">
+              <div
+                className={`h-full rounded-full ${getBarColor((b.score / b.maxScore) * 100)}`}
+                style={{ width: `${(b.score / b.maxScore) * 100}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-gray-500 mt-0.5">{b.detail}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Score card: overall, the tier it maps to, micro/macro bars and an optional breakdown. */
 export default function PerformanceScore({ score, actualTier, actualRank }: Props) {
   const [showDetails, setShowDetails] = useState(false);
 
   const tierColor = tierColors[score.rankEquivalent] || "text-white";
-  const tierBg = tierBgColors[score.rankEquivalent] || "bg-gray-700/20";
-  const rankLabel = getTierLabel(score.rankEquivalent);
-  const divisionStr = score.rankDivision ? ` ${score.rankDivision}` : "";
-
-  const actualLabel = actualTier ? getTierLabel(actualTier) : null;
-  const actualRankStr = actualTier && actualRank ? `${actualLabel} ${actualRank}` : null;
-  const actualTierColor = actualTier ? (tierColors[actualTier] || "text-white") : "text-white";
+  const playedAs = `${getTierLabel(score.rankEquivalent)}${score.rankDivision ? ` ${score.rankDivision}` : ""}`;
+  const actual = actualTier ? `${getTierLabel(actualTier)}${actualRank ? ` ${actualRank}` : ""}` : null;
 
   return (
-    <div className={`rounded-lg border-2 ${tierColor.replace("text-", "border-")}/30 ${tierBg} p-4`}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
-        <div className="flex-1">
-          <p className="text-xs text-gray-300 uppercase tracking-wide mb-1">
-            Rendimiento en esta partida
-          </p>
-          <p className={`text-2xl font-bold ${tierColor} drop-shadow-sm`}>
-            {rankLabel}{divisionStr}
-          </p>
-          {actualRankStr ? (
-            <p className="text-sm text-gray-200 mt-1">
-              Jugaste a nivel{" "}
-              <span className={`font-semibold ${tierColor}`}>
-                {rankLabel}{divisionStr}
-              </span>
-              {" "}en{" "}
-              <span className={`font-semibold ${actualTierColor}`}>
-                {actualRankStr}
-              </span>
-            </p>
-          ) : (
-            <p className="text-sm text-gray-200 mt-1">
-              Jugaste a nivel{" "}
-              <span className={`font-semibold ${tierColor}`}>
-                {rankLabel}{divisionStr}
-              </span>
-            </p>
-          )}
+    <div className="rounded-lg bg-gray-900/50 border border-white/5 p-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+        <div className="flex items-center gap-3">
+          <div className="w-14 h-14 shrink-0 rounded-lg bg-gray-950/70 border border-[#c8aa6e]/25 flex flex-col items-center justify-center">
+            <span className="text-2xl font-bold text-gray-50 leading-none">{score.overall}</span>
+            <span className="text-[9px] text-gray-500 mt-0.5">/ 100</span>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-gray-500">Jugaste a nivel</p>
+            <p className={`font-display text-lg font-bold leading-tight ${tierColor}`}>{playedAs}</p>
+            {actual && <p className="text-[11px] text-gray-500">tu rango: {actual}</p>}
+          </div>
         </div>
-        <div className="text-center px-4 py-2 bg-gray-800/50 rounded-lg">
-          <p className="text-3xl font-bold text-white">{score.overall}</p>
-          <p className="text-xs text-gray-400">/ 100</p>
+        <div className="flex-1 grid grid-cols-2 gap-4">
+          <Bar label="Micro" value={score.micro} hint="Mecánicas, daño, CS, kills" />
+          <Bar label="Macro" value={score.macro} hint="Visión, objetivos, oro, muertes" />
         </div>
+        <button
+          type="button"
+          onClick={() => setShowDetails(!showDetails)}
+          aria-expanded={showDetails}
+          className="self-start sm:self-center text-[11px] text-gray-400 hover:text-[#e3c98a] focus-ring rounded shrink-0"
+        >
+          {showDetails ? "Ocultar desglose" : "Desglose"}
+        </button>
       </div>
 
-      {/* Micro & Macro bars */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-300">Micro</span>
-            <span className="text-gray-200 font-semibold">{score.micro}</span>
-          </div>
-          <div className="h-3 bg-gray-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={score.micro} aria-valuemin={0} aria-valuemax={100} aria-label="Puntuación micro">
-            <div
-              className={`h-full rounded-full transition-all ${getBarColor(score.micro)}`}
-              style={{ width: `${score.micro}%` }}
-            />
-          </div>
-          <p className="text-xs text-gray-400 mt-1">Mecánicas, daño, CS, kills</p>
-        </div>
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-300">Macro</span>
-            <span className="text-gray-200 font-semibold">{score.macro}</span>
-          </div>
-          <div className="h-3 bg-gray-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={score.macro} aria-valuemin={0} aria-valuemax={100} aria-label="Puntuación macro">
-            <div
-              className={`h-full rounded-full transition-all ${getBarColor(score.macro)}`}
-              style={{ width: `${score.macro}%` }}
-            />
-          </div>
-          <p className="text-xs text-gray-400 mt-1">Visión, objetivos, oro, muertes</p>
-        </div>
-      </div>
-
-      {/* Toggle details */}
-      <button
-        onClick={() => setShowDetails(!showDetails)}
-        className="text-xs text-blue-400 hover:text-blue-300 transition-colors focus-ring rounded"
-        aria-expanded={showDetails}
-      >
-        {showDetails ? "Ocultar detalles" : "Ver detalles"}
-      </button>
-
-      {/* Detailed breakdown */}
       {showDetails && (
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <h5 className="text-xs font-semibold text-gray-300 uppercase mb-2">
-              Micro
-            </h5>
-            <div className="space-y-2">
-              {score.microBreakdown.map((b) => (
-                <div key={b.label}>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-300">{b.label}</span>
-                    <span className="text-gray-200">
-                      {b.score}/{b.maxScore}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${getBarColor(
-                        (b.score / b.maxScore) * 100
-                      )}`}
-                      style={{
-                        width: `${(b.score / b.maxScore) * 100}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400">{b.detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h5 className="text-xs font-semibold text-gray-300 uppercase mb-2">
-              Macro
-            </h5>
-            <div className="space-y-2">
-              {score.macroBreakdown.map((b) => (
-                <div key={b.label}>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-300">{b.label}</span>
-                    <span className="text-gray-200">
-                      {b.score}/{b.maxScore}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${getBarColor(
-                        (b.score / b.maxScore) * 100
-                      )}`}
-                      style={{
-                        width: `${(b.score / b.maxScore) * 100}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400">{b.detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="mt-4 pt-3 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Breakdown title="Micro" items={score.microBreakdown} />
+          <Breakdown title="Macro" items={score.macroBreakdown} />
         </div>
       )}
     </div>

@@ -39,11 +39,11 @@ export default async function RootLayout({
           </a>
           <nav
             aria-label="Navegación principal"
-            className="sticky top-0 z-40 border-b border-[#c8aa6e]/20 bg-gray-950/80 backdrop-blur-md px-4 sm:px-6 py-4 flex items-center gap-4 sm:gap-6"
+            className="sticky top-0 z-40 border-b border-[#c8aa6e]/20 bg-gray-950/80 backdrop-blur-md px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-6"
           >
             <Link
               href="/"
-              className="font-display text-lg sm:text-xl font-bold text-[#f0e6d2] hover:text-[#e3c98a] transition-colors focus-ring rounded flex items-center gap-2"
+              className="font-display text-lg sm:text-xl font-bold text-[#f0e6d2] hover:text-[#e3c98a] transition-colors focus-ring rounded flex items-center gap-2 whitespace-nowrap shrink-0"
             >
               <svg
                 aria-hidden
@@ -56,7 +56,7 @@ export default async function RootLayout({
                 <path d="M12 2 L20 7 V17 L12 22 L4 17 V7 Z" />
                 <path d="M12 6.5 L16.2 9 V14.5 L12 17 L7.8 14.5 V9 Z" fill="#c8aa6e" fillOpacity="0.25" />
               </svg>
-              LoL Tracker
+              <span className="max-[359px]:sr-only">LoL Tracker</span>
             </Link>
             <NavLinks />
           </nav>

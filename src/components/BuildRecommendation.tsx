@@ -1,14 +1,12 @@
 "use client";
 
 import { BuildRecommendation as BuildRecType, TeamAnalysis } from "@/lib/builds";
-import { getItemIconUrl, getUGGChampionUrl } from "@/lib/data-dragon";
-import { useDDragonVersion } from "./DDragonProvider";
+import ItemIcon from "./ItemIcon";
 
 interface Props {
   recommendation: BuildRecType;
   analysis: TeamAnalysis;
   buildVerdict: { verdict: string; level: "good" | "ok" | "bad" };
-  championName: string;
 }
 
 const verdictColors = {
@@ -17,30 +15,12 @@ const verdictColors = {
   bad: "text-red-300 bg-red-900/40 border-red-500/50",
 };
 
-export default function BuildRecommendation({ recommendation, analysis, buildVerdict, championName }: Props) {
-  const ddragonVersion = useDDragonVersion();
+export default function BuildRecommendation({ recommendation, analysis, buildVerdict }: Props) {
   const totalDisplayed = analysis.apCount + analysis.adCount + analysis.tankCount;
 
   return (
-    <div className="rounded-lg border border-gray-600 bg-gray-700/20 p-4">
-      <div className="flex items-center justify-between mb-2">
-        <h4 className="text-sm font-semibold text-gray-100">
-          Build vs Comp Enemiga
-        </h4>
-        <a
-          href={getUGGChampionUrl(championName)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-semibold rounded-lg transition-colors"
-          aria-label="Ver build completa en u.gg (abre en nueva pestaña)"
-          onClick={(e) => e.stopPropagation()}
-        >
-          Ver en u.gg
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-        </a>
-      </div>
+    <div className="rounded-lg bg-gray-900/50 border border-white/5 p-3">
+      <h4 className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Build vs la comp enemiga</h4>
       <p className="text-sm text-orange-300 font-medium mb-2">
         {recommendation.title}
       </p>
@@ -81,15 +61,11 @@ export default function BuildRecommendation({ recommendation, analysis, buildVer
             {recommendation.items.map((item) => (
               <div
                 key={item.itemId}
-                className="flex items-center gap-2 bg-gray-800/60 rounded-lg p-2.5"
+                className="flex items-center gap-2 bg-gray-950/50 rounded-lg p-2"
               >
-                <img
-                  src={getItemIconUrl(item.itemId, ddragonVersion)}
-                  alt={item.name}
-                  width={32}
-                  height={32}
-                  className="rounded border border-gray-600"
-                />
+                <span className="shrink-0" title={item.name}>
+                  <ItemIcon itemId={item.itemId} size={32} />
+                </span>
                 <div className="min-w-0">
                   <p className="text-sm text-gray-100 font-medium truncate">
                     {item.name}

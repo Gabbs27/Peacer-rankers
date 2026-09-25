@@ -14,9 +14,15 @@ export interface FormulaRow {
   lossAvg: number;
   /** Positive = the metric is higher in wins (regardless of direction). */
   delta: number;
-  /** |delta| normalised by the overall average — used to rank separation. */
+  /**
+   * Standardised gap (Cohen's d): |delta| over the pooled within-side spread.
+   * Rewards metrics that differ CONSISTENTLY between wins and losses, so a
+   * near-zero average (0.1 vs 0 control wards over 2 games) can't outrank a
+   * steady 3 vs 1 dragons.
+   */
   separation: number;
   higherIsBetter: boolean;
+  /** Formats an average (winAvg / lossAvg), not a single game's value. */
   format: (v: number) => string;
   /** True when the win-vs-loss gap points the same way as "better". */
   helps: boolean;
@@ -35,8 +41,17 @@ export interface WinFormula {
 
 const MIN_GAMES_PER_SIDE = 2;
 
+// Below this effect size a win/loss gap is too small to call a lever.
+const MIN_SEPARATION = 0.3;
+
 function avg(values: number[]): number {
   return values.reduce((s, v) => s + v, 0) / values.length;
+}
+
+/** Sample variance (n - 1). */
+function variance(values: number[]): number {
+  const mean = avg(values);
+  return values.reduce((s, v) => s + (v - mean) ** 2, 0) / (values.length - 1);
 }
 
 export function computeWinFormula(matches: MatchData[], puuid: string): WinFormula | null {
@@ -76,8 +91,15 @@ export function computeWinFormula(matches: MatchData[], puuid: string): WinFormu
     const winAvg = avg(winValues);
     const lossAvg = avg(lossValues);
     const delta = winAvg - lossAvg;
-    const scale = Math.abs(avg([winAvg, lossAvg]));
-    const separation = scale > 0 ? Math.abs(delta) / scale : 0;
+    const pooledSd = Math.sqrt(
+      ((winValues.length - 1) * variance(winValues) + (lossValues.length - 1) * variance(lossValues)) /
+        (winValues.length + lossValues.length - 2)
+    );
+    // Floor the spread so a metric that never varies within either side (lane
+    // advantage in every win, in no loss) reads as a very strong separator
+    // instead of dividing by zero.
+    const spread = Math.max(pooledSd, 0.05 * Math.abs(avg([winAvg, lossAvg])), Number.EPSILON);
+    const separation = Math.abs(delta) / spread;
     // "helps" = in wins the metric moves in the direction that is actually good.
     const helps = def.higherIsBetter ? delta > 0 : delta < 0;
 
@@ -90,7 +112,7 @@ export function computeWinFormula(matches: MatchData[], puuid: string): WinFormu
       delta,
       separation,
       higherIsBetter: def.higherIsBetter,
-      format: def.format,
+      format: def.formatAverage ?? def.format,
       helps,
       hint: def.hint,
     });
@@ -102,7 +124,11 @@ export function computeWinFormula(matches: MatchData[], puuid: string): WinFormu
 
   // The weakness worth fixing: biggest separation among metrics that behave as
   // expected (better in wins) — that is the lever this player actually pulls.
-  const actionable = rows.filter((r) => r.helps && r.separation >= 0.08);
+  // A gap that reads the same once formatted can't be acted on, so it never
+  // headlines ("Cuando ganas: 50%. Cuando pierdes: 50%."); it stays in `rows`.
+  const actionable = rows.filter(
+    (r) => r.helps && r.separation >= MIN_SEPARATION && r.format(r.winAvg) !== r.format(r.lossAvg)
+  );
   const topWeakness = actionable[0] ?? null;
   const topStrength = actionable.length > 1 ? actionable[1] : null;
 

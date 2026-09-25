@@ -20,7 +20,7 @@ export default function NavLinks() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`relative text-sm transition-colors focus-ring rounded px-1 py-0.5 ${
+            className={`relative text-xs sm:text-sm transition-colors focus-ring rounded px-1 py-0.5 ${
               active
                 ? "text-[#f0e6d2]"
                 : "text-gray-300 hover:text-[#e3c98a]"

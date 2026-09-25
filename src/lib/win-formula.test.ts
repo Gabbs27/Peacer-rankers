@@ -77,6 +77,72 @@ describe("computeWinFormula", () => {
     expect(formula.topWeakness?.key).toBe("timeDead");
   });
 
+  it("does not let a sparse near-zero metric outrank a consistent gap", () => {
+    // Control wards 0.5 vs 0: maximal RELATIVE gap, but it comes from two
+    // games; kill participation differs in every single game.
+    const withWards = (m: MatchData, wards: number) => {
+      const p = m.info.participants[0];
+      p.challenges = { ...p.challenges, controlWardsPlaced: wards };
+      return m;
+    };
+    const matches = [
+      withWards(game({ win: true, killParticipation: 0.7, timeDead: 200 }), 1),
+      withWards(game({ win: true, killParticipation: 0.68, timeDead: 200 }), 1),
+      withWards(game({ win: true, killParticipation: 0.72, timeDead: 200 }), 0),
+      withWards(game({ win: true, killParticipation: 0.69, timeDead: 200 }), 0),
+      withWards(game({ win: false, killParticipation: 0.35, timeDead: 200 }), 0),
+      withWards(game({ win: false, killParticipation: 0.33, timeDead: 200 }), 0),
+      withWards(game({ win: false, killParticipation: 0.36, timeDead: 200 }), 0),
+      withWards(game({ win: false, killParticipation: 0.34, timeDead: 200 }), 0),
+    ];
+    const formula = computeWinFormula(matches, ME)!;
+    expect(formula.topWeakness?.key).toBe("killParticipation");
+    // Still reported, and its average is readable instead of "0 vs 0".
+    const wards = formula.rows.find((r) => r.key === "controlWards")!;
+    expect(wards.format(wards.winAvg)).toBe("0.5");
+    expect(wards.format(wards.lossAvg)).toBe("0.0");
+  });
+
+  it("keeps a 0/1 metric like lane advantage and shows it as a share of games", () => {
+    const withLane = (m: MatchData, won: number) => {
+      const p = m.info.participants[0];
+      p.challenges = { ...p.challenges, laningPhaseGoldExpAdvantage: won };
+      return m;
+    };
+    // Lane won in 4 of 5 wins and in none of the losses; nothing else differs.
+    const matches = [1, 1, 1, 1, 0].map((won) =>
+      withLane(game({ win: true, killParticipation: 0.5, timeDead: 200 }), won)
+    );
+    for (let i = 0; i < 5; i++) {
+      matches.push(withLane(game({ win: false, killParticipation: 0.5, timeDead: 200 }), 0));
+    }
+    const formula = computeWinFormula(matches, ME)!;
+    expect(formula.topWeakness?.key).toBe("laneAdvantage");
+    expect(formula.topWeakness!.format(formula.topWeakness!.winAvg)).toBe("80%");
+    expect(formula.topWeakness!.format(formula.topWeakness!.lossAvg)).toBe("0%");
+  });
+
+  it("never headlines a gap that reads the same once formatted", () => {
+    // CS advantage averages +2.45 vs +1.55: a very consistent gap, but both
+    // sides read "+2". Time dead has a visible gap and must take the headline.
+    const withCsLead = (m: MatchData, lead: number) => {
+      const p = m.info.participants[0];
+      p.challenges = { ...p.challenges, maxCsAdvantageOnLaneOpponent: lead };
+      return m;
+    };
+    const matches = [
+      withCsLead(game({ win: true, killParticipation: 0.5, timeDead: 100 }), 2.4),
+      withCsLead(game({ win: true, killParticipation: 0.5, timeDead: 160 }), 2.5),
+      withCsLead(game({ win: false, killParticipation: 0.5, timeDead: 300 }), 1.6),
+      withCsLead(game({ win: false, killParticipation: 0.5, timeDead: 360 }), 1.5),
+    ];
+    const formula = computeWinFormula(matches, ME)!;
+    const cs = formula.rows.find((r) => r.key === "csAdvantage")!;
+    expect(cs.format(cs.winAvg)).toBe(cs.format(cs.lossAvg));
+    expect(cs.separation).toBeGreaterThan(formula.rows.find((r) => r.key === "timeDead")!.separation);
+    expect(formula.topWeakness?.key).toBe("timeDead");
+  });
+
   it("ignores remakes", () => {
     const matches = [
       game({ win: true, killParticipation: 0.7, timeDead: 100 }),

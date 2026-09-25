@@ -93,14 +93,14 @@ export default function TrendsPanel({ matches, puuid }: Props) {
   ];
 
   return (
-    <section aria-label="Tendencias" className="panel p-5 rise rise-2">
-      <h3 className="section-title text-lg font-bold text-gray-100 mb-3">
+    <section aria-label="Tendencias" className="panel p-5">
+      <h3 className="section-title text-base font-bold text-gray-100 mb-3">
         Tendencias
         <span className="text-xs text-gray-500 font-sans font-normal">
           ({games.length} partidas, de más antigua a más reciente)
         </span>
       </h3>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {metrics.map((metric) => {
           const { improving, delta } = trendOf(metric.values, metric.higherIsBetter);
           const last = metric.values[metric.values.length - 1];

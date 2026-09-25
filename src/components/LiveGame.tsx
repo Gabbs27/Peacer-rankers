@@ -100,35 +100,24 @@ export default function LiveGame({ puuid, region, matches = [] }: LiveGameProps)
     };
   }, [puuid, region, ddragonVersion]);
 
-  if (loading) {
+  // Until a game is live this is one muted line, and it keeps the same height
+  // while checking, when idle and when spectator access is missing — so
+  // nothing below it jumps when the first check resolves.
+  if (loading || is403 || !data || !data.inGame || !data.game) {
+    const text = is403
+      ? "Partida en vivo no disponible"
+      : loading
+        ? "Comprobando si está en partida…"
+        : `Sin partida en vivo · se comprueba cada minuto${
+            lastChecked
+              ? ` (${lastChecked.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })})`
+              : ""
+          }`;
     return (
-      <div className="panel p-4 animate-pulse">
-        <div className="h-4 bg-gray-700 rounded w-48" />
-      </div>
-    );
-  }
-
-  if (is403) {
-    return (
-      <p className="text-xs text-gray-500 text-center">
-        La API de espectador no está disponible con esta API key
+      <p className="flex items-center gap-2 text-[11px] leading-4 text-gray-500 px-1 whitespace-nowrap overflow-hidden">
+        <span className="inline-flex rounded-full h-1.5 w-1.5 shrink-0 bg-gray-600" aria-hidden />
+        <span className="truncate">{text}</span>
       </p>
-    );
-  }
-
-  if (!data || !data.inGame || !data.game) {
-    return (
-      <div className="panel px-4 py-2.5 flex items-center justify-between text-xs text-gray-400">
-        <span className="flex items-center gap-2">
-          <span className="inline-flex rounded-full h-2 w-2 bg-gray-500" aria-hidden />
-          No está en partida ahora mismo
-        </span>
-        <span className="text-gray-500">
-          Se comprueba cada minuto
-          {lastChecked &&
-            ` · última: ${lastChecked.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}`}
-        </span>
-      </div>
     );
   }
 

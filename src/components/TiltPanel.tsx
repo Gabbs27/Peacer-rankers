@@ -32,8 +32,8 @@ export default function TiltPanel({ matches, puuid }: Props) {
   const worstHour = [...stats.byHour].filter((h) => h.games >= 3).sort((a, b) => a.winrate - b.winrate)[0];
 
   return (
-    <section aria-label="Fatiga y horarios" className="panel p-5 rise rise-3">
-      <h3 className="section-title text-lg font-bold text-gray-100 mb-3">
+    <section aria-label="Fatiga y horarios" className="panel p-5">
+      <h3 className="section-title text-base font-bold text-gray-100 mb-3">
         ¿Cuándo deberías parar?
         <span className="text-xs text-gray-500 font-sans font-normal">
           ({stats.totalGames} partidas en {stats.sessions} sesion{stats.sessions === 1 ? "" : "es"})
