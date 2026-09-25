@@ -75,6 +75,10 @@ export function computeWinFormula(matches: MatchData[], puuid: string): WinFormu
 
     const winAvg = avg(winValues);
     const lossAvg = avg(lossValues);
+    // A gap that vanishes in the metric's own units (0.13 vs 0 control wards
+    // both read "0") is noise — and since separation is relative, near-zero
+    // averages would otherwise rank first with a headline that reads "0 vs 0".
+    if (def.format(winAvg) === def.format(lossAvg)) continue;
     const delta = winAvg - lossAvg;
     const scale = Math.abs(avg([winAvg, lossAvg]));
     const separation = scale > 0 ? Math.abs(delta) / scale : 0;

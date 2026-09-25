@@ -77,6 +77,25 @@ describe("computeWinFormula", () => {
     expect(formula.topWeakness?.key).toBe("timeDead");
   });
 
+  it("skips gaps too small to show in the metric's own units", () => {
+    // Control wards 0.25 vs 0 average: maximal relative separation, but both
+    // round to "0", so it must not become the headline.
+    const withWards = (m: MatchData, wards: number) => {
+      const p = m.info.participants[0];
+      p.challenges = { ...p.challenges, controlWardsPlaced: wards };
+      return m;
+    };
+    const matches = [
+      withWards(game({ win: true, killParticipation: 0.7, timeDead: 120 }), 0.3),
+      withWards(game({ win: true, killParticipation: 0.68, timeDead: 140 }), 0.2),
+      withWards(game({ win: false, killParticipation: 0.35, timeDead: 400 }), 0),
+      withWards(game({ win: false, killParticipation: 0.33, timeDead: 420 }), 0),
+    ];
+    const formula = computeWinFormula(matches, ME)!;
+    expect(formula.rows.find((r) => r.key === "controlWards")).toBeUndefined();
+    expect(formula.topWeakness?.key).not.toBe("controlWards");
+  });
+
   it("ignores remakes", () => {
     const matches = [
       game({ win: true, killParticipation: 0.7, timeDead: 100 }),
