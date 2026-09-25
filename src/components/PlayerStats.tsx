@@ -31,7 +31,7 @@ const tierColors: Record<string, string> = {
 function RankTile({ entry, label }: { entry: LeagueEntry | undefined; label: string }) {
   if (!entry) {
     return (
-      <div className="rounded-lg bg-gray-900/50 border border-white/5 px-3 py-2 min-w-[9.5rem]">
+      <div className="rounded-lg bg-gray-900/50 border border-white/5 px-3 py-2 min-w-0 md:min-w-[9.5rem]">
         <p className="text-[10px] uppercase tracking-wider text-gray-500">{label}</p>
         <p className="text-sm text-gray-400 mt-0.5">Sin clasificar</p>
       </div>
@@ -42,7 +42,7 @@ function RankTile({ entry, label }: { entry: LeagueEntry | undefined; label: str
   const winrate = games > 0 ? Math.round((entry.wins / games) * 100) : 0;
 
   return (
-    <div className="rounded-lg bg-gray-900/50 border border-white/5 px-3 py-2 min-w-[9.5rem]">
+    <div className="rounded-lg bg-gray-900/50 border border-white/5 px-3 py-2 min-w-0 md:min-w-[9.5rem]">
       <p className="text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
         {label}
         {entry.hotStreak && (

@@ -84,6 +84,7 @@ function KeyMoments({ timeline }: { timeline: TimelineState }) {
       {laning && (
         <div className="flex flex-wrap gap-1.5">
           <DiffChip label="CS al 10" value={laning.csAt10} signed={false} />
+          <DiffChip label="CS al 14" value={laning.csAt14} signed={false} />
           <DiffChip label="Oro al 10" value={laning.goldDiffAt10} />
           <DiffChip label="Oro al 14" value={laning.goldDiffAt14} />
           <DiffChip label="XP al 10" value={laning.xpDiffAt10} />

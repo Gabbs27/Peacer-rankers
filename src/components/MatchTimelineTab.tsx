@@ -75,7 +75,7 @@ export default function MatchTimelineTab({ timeline, mapId }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] items-start">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_auto] items-start">
         <div className="space-y-5 min-w-0">
           {goldDiffSeries && goldDiffSeries.length > 1 && (
             <GoldDiffSparkline series={goldDiffSeries} opponent={opponentChampion} />

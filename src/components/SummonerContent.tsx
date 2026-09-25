@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import type { ChampionMastery, LeagueEntry, MatchData } from "@/lib/types";
+import { isRemake } from "@/lib/scoring";
 import MatchCard from "./MatchCard";
 import TabBar, { tabPanelProps } from "./TabBar";
 import RecentSummary from "./RecentSummary";
@@ -38,9 +40,15 @@ function subscribeHash(onChange: () => void) {
   return () => window.removeEventListener("hashchange", onChange);
 }
 
+// Last tab the hash resolved to. Other fragments (the layout's skip link
+// #main-content, any in-page anchor) are not tab changes and keep it.
+let lastTab: ProfileTab = "partidas";
+
 function readHashTab(): ProfileTab {
   const hash = window.location.hash.slice(1);
-  return (PROFILE_TABS as readonly string[]).includes(hash) ? (hash as ProfileTab) : "partidas";
+  if (hash === "") lastTab = "partidas";
+  else if ((PROFILE_TABS as readonly string[]).includes(hash)) lastTab = hash as ProfileTab;
+  return lastTab;
 }
 
 const serverTab = (): ProfileTab => "partidas";
@@ -138,6 +146,14 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
     fetchMatches(0, value, true);
   };
 
+  // The button that triggers this unmounts with the Partidas panel, so hand
+  // focus to the tab it opened: keyboard and screen-reader users follow along.
+  // flushSync commits the switch first, so the tab is focused already selected.
+  const openCoaching = () => {
+    flushSync(() => selectTab("coaching"));
+    document.getElementById("profile-tab-coaching")?.focus();
+  };
+
   const filtersActive = Boolean(champFilter || resultFilter || roleFilter);
   const clearFilters = () => {
     setChampFilter("");
@@ -149,6 +165,7 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
     const player = m.info.participants.find((p) => p.puuid === puuid);
     if (!player) return false;
     if (champFilter && player.championName !== champFilter) return false;
+    if (resultFilter && isRemake(m.info)) return false;
     if (resultFilter === "win" && !player.win) return false;
     if (resultFilter === "loss" && player.win) return false;
     if (roleFilter && (player.teamPosition || player.individualPosition) !== roleFilter) return false;
@@ -196,10 +213,10 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
 
       <div key={tab} {...tabPanelProps("profile", tab)} className="tab-enter">
         {tab === "partidas" && (
-          <div className="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr] items-start">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[17rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr] items-start">
             <div className="space-y-4 lg:col-start-1 lg:row-start-1">
               <RecentSummary matches={matches} puuid={puuid} />
-              <NextGameCallout matches={matches} puuid={puuid} onOpenCoaching={() => selectTab("coaching")} />
+              <NextGameCallout matches={matches} puuid={puuid} onOpenCoaching={openCoaching} />
             </div>
 
             <section
@@ -312,7 +329,7 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
         {tab === "coaching" && (
           <div className="space-y-5">
             <TodayPlan matches={matches} puuid={puuid} />
-            <div className="grid gap-5 lg:grid-cols-2 items-start">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 items-start">
               <WinFormulaPanel matches={matches} puuid={puuid} />
               <LossPatternPanel matches={matches} puuid={puuid} />
               <TiltPanel matches={matches} puuid={puuid} />
@@ -325,7 +342,7 @@ export default function SummonerContent({ initialMatches, puuid, region, riotId,
         {tab === "campeones" && (
           <div className="space-y-5">
             <ChampionStatsTable matches={matches} puuid={puuid} profileHref={profileHref} />
-            <div className="grid gap-5 lg:grid-cols-2 items-start">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 items-start">
               <MatchupsPanel matches={matches} puuid={puuid} />
               <ChampionMasterySection mastery={mastery} profileHref={profileHref} />
             </div>

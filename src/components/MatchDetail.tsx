@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { LeagueEntry, MatchData, MatchParticipant } from "@/lib/types";
 import { isRemake } from "@/lib/scoring";
+import { getQueueName } from "@/lib/data-dragon";
 import { useTimelineInsights } from "@/lib/use-timeline-insights";
 import TabBar, { tabPanelProps, type TabDef } from "./TabBar";
 import MatchIdBadge from "./MatchIdBadge";
@@ -43,6 +44,11 @@ export default function MatchDetail({ match, player, puuid, region, ranked }: Pr
 
   return (
     <section aria-label="Detalles de la partida" className="border-t border-white/10 bg-gray-950/25">
+      {/* Phones: the summary row has no room for the queue, so it goes here with the ID. */}
+      <div className="sm:hidden flex items-center justify-between gap-2 px-3 pt-2">
+        <span className="text-[11px] text-gray-400 truncate">{getQueueName(match.info.queueId)}</span>
+        <MatchIdBadge matchId={match.metadata.matchId} />
+      </div>
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 pt-3">
         <TabBar
           size="sm"
@@ -52,7 +58,6 @@ export default function MatchDetail({ match, player, puuid, region, ranked }: Pr
           value={tab}
           onChange={setTab}
         />
-        {/* Beside the tabs when there is room; at the foot of the panel on phones. */}
         <div className="hidden sm:flex ml-auto">
           <MatchIdBadge matchId={match.metadata.matchId} />
         </div>
@@ -71,10 +76,6 @@ export default function MatchDetail({ match, player, puuid, region, ranked }: Pr
         {tab === "equipos" && <MatchTeamsTab match={match} player={player} puuid={puuid} region={region} />}
         {tab === "timeline" && <MatchTimelineTab timeline={timeline} mapId={match.info.mapId} />}
         {tab === "build" && <MatchBuildTab player={player} info={match.info} />}
-      </div>
-
-      <div className="sm:hidden flex justify-end px-3 pb-2">
-        <MatchIdBadge matchId={match.metadata.matchId} />
       </div>
     </section>
   );

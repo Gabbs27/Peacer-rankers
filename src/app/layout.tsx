@@ -56,7 +56,7 @@ export default async function RootLayout({
                 <path d="M12 2 L20 7 V17 L12 22 L4 17 V7 Z" />
                 <path d="M12 6.5 L16.2 9 V14.5 L12 17 L7.8 14.5 V9 Z" fill="#c8aa6e" fillOpacity="0.25" />
               </svg>
-              LoL Tracker
+              <span className="max-[359px]:sr-only">LoL Tracker</span>
             </Link>
             <NavLinks />
           </nav>

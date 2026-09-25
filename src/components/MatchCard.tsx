@@ -84,13 +84,16 @@ export default function MatchCard({ match, puuid, region, ranked }: Props) {
           </div>
         </div>
 
-        {/* KDA */}
-        <div className="min-w-0 w-24 sm:w-28 shrink-0">
+        {/* KDA (+ total CS on phones, where the Farm column is hidden) */}
+        <div className="min-w-0 flex-1 sm:flex-none sm:w-28">
           <p className="font-bold text-sm sm:text-base text-gray-50 flex items-center gap-1.5">
             {player.kills}/{player.deaths}/{player.assists}
             <MultikillBadge penta={player.pentaKills} quadra={player.quadraKills} triple={player.tripleKills} />
           </p>
-          <p className="text-xs text-gray-400">{getKDA(player.kills, player.deaths, player.assists)} KDA</p>
+          <p className="text-xs text-gray-400 truncate">
+            {getKDA(player.kills, player.deaths, player.assists)} KDA
+            <span className="sm:hidden"> · {cs} CS</span>
+          </p>
         </div>
 
         {/* Farm */}

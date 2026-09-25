@@ -77,7 +77,7 @@ export default function TabBar<T extends string>({
             onKeyDown={(e) => handleKeyDown(e, i)}
             className={
               md
-                ? `relative shrink-0 px-3 sm:px-4 py-2.5 font-display text-sm font-semibold tracking-wide transition-colors focus-ring rounded-t ${
+                ? `relative shrink-0 px-3 sm:px-4 py-2.5 font-display text-sm font-semibold tracking-wide transition-colors focus-inset rounded-t ${
                     active ? "text-[#f0e6d2]" : "text-gray-400 hover:text-[#e3c98a]"
                   }`
                 : `shrink-0 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors focus-ring ${

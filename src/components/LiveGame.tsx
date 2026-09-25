@@ -100,17 +100,23 @@ export default function LiveGame({ puuid, region, matches = [] }: LiveGameProps)
     };
   }, [puuid, region, ddragonVersion]);
 
-  // Nothing to show until there is a live game: the banner appears on its own
-  // when one starts. A key without spectator access just never shows it.
-  if (loading || is403) return null;
-
-  if (!data || !data.inGame || !data.game) {
+  // Until a game is live this is one muted line, and it keeps the same height
+  // while checking, when idle and when spectator access is missing — so
+  // nothing below it jumps when the first check resolves.
+  if (loading || is403 || !data || !data.inGame || !data.game) {
+    const text = is403
+      ? "Partida en vivo no disponible"
+      : loading
+        ? "Comprobando si está en partida…"
+        : `Sin partida en vivo · se comprueba cada minuto${
+            lastChecked
+              ? ` (${lastChecked.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })})`
+              : ""
+          }`;
     return (
-      <p className="flex items-center gap-2 text-[11px] text-gray-500 px-1">
-        <span className="inline-flex rounded-full h-1.5 w-1.5 bg-gray-600" aria-hidden />
-        Sin partida en vivo · se comprueba cada minuto
-        {lastChecked &&
-          ` (${lastChecked.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })})`}
+      <p className="flex items-center gap-2 text-[11px] leading-4 text-gray-500 px-1 whitespace-nowrap overflow-hidden">
+        <span className="inline-flex rounded-full h-1.5 w-1.5 shrink-0 bg-gray-600" aria-hidden />
+        <span className="truncate">{text}</span>
       </p>
     );
   }

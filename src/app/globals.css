@@ -176,6 +176,12 @@ body::before {
   border-radius: 4px;
 }
 
+/* Inside a scrolling strip (tab bars) an outside ring gets clipped by the
+   strip's overflow: draw it inside the element instead. */
+.focus-inset:focus-visible {
+  outline-offset: -3px;
+}
+
 /* Smooth collapsible sections */
 .collapse-transition {
   transition: all 0.2s ease-in-out;
