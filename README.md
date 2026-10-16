@@ -8,6 +8,9 @@ jugadores, planner de builds/runas pre-partida y guías.
 Construido con **Next.js 16** (App Router), **React 19**, **TypeScript** y **Tailwind 4**,
 sobre la **Riot Games API** y **Data Dragon**.
 
+Incluye una app para Mac que acompaña al cliente de League (asistente de draft, tus
+runas con un clic, scouting y overlay): ver [`desktop/`](desktop/README.md).
+
 ## Requisitos
 
 - Node.js 20+

@@ -1,0 +1,16 @@
+appId: gg.loltracker.companion
+productName: LoL Tracker
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+mac:
+  category: public.app-category.games
+  target:
+    - target: dmg
+      arch: [arm64]
+  # Signed ad-hoc by `npm run dist` (codesign --sign -): enough to run on your
+  # own Apple Silicon Mac. Distributing to others needs an Apple Developer ID
+  # (signing + notarization) and Riot's third-party app approval.
+  identity: null
