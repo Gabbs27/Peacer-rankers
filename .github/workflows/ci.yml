@@ -37,3 +37,32 @@ jobs:
         env:
           # Build must not require a live key; a dummy keeps env-reads happy.
           RIOT_API_KEY: ci-dummy-key
+
+  desktop:
+    # The macOS companion app (desktop/): typecheck and tests. Packaging needs
+    # macOS and is done locally with `npm run dist`.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install dependencies
+        # Same reason as above for `npm install`. Typecheck and tests never
+        # launch Electron, so its ~100 MB binary is not downloaded.
+        run: npm install --no-audit --no-fund
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
