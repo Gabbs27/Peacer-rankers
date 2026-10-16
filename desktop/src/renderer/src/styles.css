@@ -48,8 +48,12 @@ body {
   user-select: none;
 }
 
+/* The overlay window is transparent: a scrollbar (macOS set to always show
+   them) would draw a white frame over the game. */
+html:has(body.overlay),
 body.overlay {
   background: transparent;
+  overflow: hidden;
 }
 
 .drag {
