@@ -448,6 +448,8 @@ export interface SummonerProfile {
 // Spectator V5 types
 export interface CurrentGameParticipant {
   puuid: string;
+  /** "Name#TAG" (absent for bots). */
+  riotId?: string;
   teamId: number;
   championId: number;
   spell1Id: number;

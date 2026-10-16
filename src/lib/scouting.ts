@@ -84,32 +84,21 @@ export function scoutPlayer(input: ScoutInput, now: number): ScoutReport {
   return { rank, winrate, games, signals };
 }
 
-export interface ScoutRequestPlayer {
+/** One player of your current game, as returned by /api/scout. */
+export interface ScoutedPlayer extends ScoutReport {
   puuid: string;
+  teamId: number;
   championId: number;
+  /** Localized display name, e.g. "Wukong". */
   championName: string;
+  riotId: string | null;
+  /** Riot data could not be read for this player right now. */
+  unavailable?: true;
 }
 
-const MAX_SCOUTED_PLAYERS = 10;
 const PUUID_RE = /^[A-Za-z0-9_-]{20,100}$/;
-const CHAMPION_NAME_RE = /^[A-Za-z]{2,24}$/;
 
-/**
- * Parses `puuid:championId:ChampionName` entries separated by commas (the
- * `players` query param of /api/scout). Returns null when anything is malformed
- * rather than scouting a partial or attacker-shaped list.
- */
-export function parseScoutPlayers(param: string | null): ScoutRequestPlayer[] | null {
-  if (!param) return null;
-  const entries = param.split(",");
-  if (entries.length === 0 || entries.length > MAX_SCOUTED_PLAYERS) return null;
-  const players: ScoutRequestPlayer[] = [];
-  for (const entry of entries) {
-    const [puuid, id, championName, ...rest] = entry.split(":");
-    const championId = Number(id);
-    if (rest.length > 0 || !PUUID_RE.test(puuid ?? "") || !CHAMPION_NAME_RE.test(championName ?? "")) return null;
-    if (!Number.isInteger(championId) || championId <= 0 || championId > 10_000) return null;
-    players.push({ puuid, championId, championName });
-  }
-  return players;
+/** Shape check for a Riot API PUUID before it goes into a Riot URL. */
+export function isPuuid(value: unknown): value is string {
+  return typeof value === "string" && PUUID_RE.test(value);
 }

@@ -7,7 +7,7 @@ const API_PATHS = [
   /^\/api\/summoner\?[\w=&%.~!'()*-]+$/,
   /^\/api\/matches\?[\w=&%.-]+$/,
   /^\/api\/live-game\?[\w=&%.-]+$/,
-  /^\/api\/scout\?[\w=&%.:,-]+$/,
+  /^\/api\/scout\?[\w=&%.-]+$/,
 ];
 
 const WEB_PATHS = /^\/summoner\/[a-z0-9]+\/[^/?#\s]+$/;

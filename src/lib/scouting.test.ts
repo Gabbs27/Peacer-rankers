@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { LeagueEntry } from "./types";
-import { parseScoutPlayers, scoutPlayer } from "./scouting";
+import { isPuuid, scoutPlayer } from "./scouting";
 
 const NOW = Date.UTC(2026, 9, 16);
 const DAY = 86_400_000;
@@ -71,23 +71,11 @@ describe("scoutPlayer", () => {
   });
 });
 
-describe("parseScoutPlayers", () => {
-  const PUUID = "PPwn26d1UuILyxFOcBO2WFGyTVjC32zjOtZ9NRVsIzv5K9kBzdcdVBTbI_C2Gg3UYAW3mwV5F9PDIw";
-
-  it("parses puuid:championId:ChampionName entries", () => {
-    expect(parseScoutPlayers(`${PUUID}:233:Briar,${PUUID}:104:Graves`)).toEqual([
-      { puuid: PUUID, championId: 233, championName: "Briar" },
-      { puuid: PUUID, championId: 104, championName: "Graves" },
-    ]);
-  });
-
-  it("rejects malformed or oversized lists instead of scouting part of them", () => {
-    expect(parseScoutPlayers(null)).toBeNull();
-    expect(parseScoutPlayers("")).toBeNull();
-    expect(parseScoutPlayers(`${PUUID}:abc:Briar`)).toBeNull();
-    expect(parseScoutPlayers(`${PUUID}:233:Bri@r`)).toBeNull();
-    expect(parseScoutPlayers(`../etc:233:Briar`)).toBeNull();
-    expect(parseScoutPlayers(`${PUUID}:233:Briar:extra`)).toBeNull();
-    expect(parseScoutPlayers(Array(11).fill(`${PUUID}:233:Briar`).join(","))).toBeNull();
+describe("isPuuid", () => {
+  it("accepts Riot API PUUIDs and rejects anything that could reshape a URL", () => {
+    expect(isPuuid("PPwn26d1UuILyxFOcBO2WFGyTVjC32zjOtZ9NRVsIzv5K9kBzdcdVBTbI_C2Gg3UYAW3mwV5F9PDIw")).toBe(true);
+    expect(isPuuid("../../lol/status")).toBe(false);
+    expect(isPuuid("short")).toBe(false);
+    expect(isPuuid(null)).toBe(false);
   });
 });

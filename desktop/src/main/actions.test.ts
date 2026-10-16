@@ -36,7 +36,8 @@ describe("backend allow-list", () => {
   it("allows only the read-only API paths the app uses", () => {
     expect(isAllowedApiPath("/api/matches?puuid=abc_DEF-1&region=la1&count=20&start=0")).toBe(true);
     expect(isAllowedApiPath("/api/live-game?puuid=abc&region=la1")).toBe(true);
-    expect(isAllowedApiPath("/api/scout?region=la1&players=abc:233:Briar,def:104:Graves")).toBe(true);
+    expect(isAllowedApiPath("/api/scout?puuid=abc_DEF-1&region=la1")).toBe(true);
+    expect(isAllowedApiPath("/api/scout?region=la1&players=abc:233:Briar")).toBe(false);
     expect(isAllowedApiPath("/api/summoner?gameName=Xicebriel&tagLine=LAN&region=la1")).toBe(true);
     expect(isAllowedApiPath("/api/summoner?gameName=El%20Javvis&tagLine=LAN&region=la1")).toBe(true);
     expect(isAllowedApiPath("/api/match/LA1_123")).toBe(false);

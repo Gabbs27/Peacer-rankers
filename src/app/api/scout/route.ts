@@ -1,54 +1,76 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getChampionMasteryFor, getLeagueEntries } from "@/lib/riot-api";
+import { getChampionMasteryFor, getCurrentGame, getLeagueEntries } from "@/lib/riot-api";
+import { getDDragonVersion } from "@/lib/data-dragon";
+import { loadChampionList } from "@/lib/champion-client";
 import { isValidRegion } from "@/lib/types";
-import { parseScoutPlayers, scoutPlayer, type ScoutReport } from "@/lib/scouting";
+import { riotErrorResponse } from "@/lib/api-helpers";
+import { isPuuid, scoutPlayer, type ScoutedPlayer } from "@/lib/scouting";
 
-type ScoutResponseEntry = ScoutReport & { puuid: string; championName: string; unavailable?: true };
+async function championNames(): Promise<Map<number, string>> {
+  try {
+    const list = await loadChampionList(await getDDragonVersion());
+    return new Map(list.map((c) => [Number(c.key), c.name]));
+  } catch {
+    return new Map();
+  }
+}
 
 /**
- * Loading-screen scouting for up to 10 players:
- * GET /api/scout?region=la1&players=puuid:championId:ChampionName,...
- * Two Riot calls per player (rank + mastery on that champion), both cached.
+ * Loading-screen scouting of YOUR current game:
+ * GET /api/scout?puuid=<your Riot API PUUID>&region=la1
+ *
+ * The players come from the spectator API server-side, never from the caller,
+ * so a request can only fan out to the players of a real live game (two
+ * cached Riot calls each). That keeps the shared Riot key from being drained
+ * with made-up ids, and only analyzes players the game already shows you.
  */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
+  const puuid = searchParams.get("puuid");
   const region = searchParams.get("region");
-  const players = parseScoutPlayers(searchParams.get("players"));
 
-  if (!isValidRegion(region) || !players) {
-    return NextResponse.json(
-      { error: "Se requiere una región válida y de 1 a 10 jugadores (puuid:championId:Campeón)." },
-      { status: 400 }
-    );
+  if (!isPuuid(puuid) || !isValidRegion(region)) {
+    return NextResponse.json({ error: "puuid y una región válida son requeridos" }, { status: 400 });
   }
 
-  const now = Date.now();
-  const settled = await Promise.allSettled(
-    players.map(async (player): Promise<ScoutResponseEntry> => {
-      const [entries, mastery] = await Promise.all([
-        getLeagueEntries(player.puuid, region),
-        getChampionMasteryFor(player.puuid, region, player.championId),
-      ]);
-      const soloQueue = entries.find((e) => e.queueType === "RANKED_SOLO_5x5") ?? null;
-      const report = scoutPlayer({ championName: player.championName, soloQueue, mastery }, now);
-      return { puuid: player.puuid, championName: player.championName, ...report };
-    })
-  );
+  try {
+    const game = await getCurrentGame(puuid, region);
+    if (!game) return NextResponse.json({ inGame: false });
 
-  // One player failing (rate limit, transient 5xx) must not hide the other nine.
-  const reports = settled.map((result, i): ScoutResponseEntry =>
-    result.status === "fulfilled"
-      ? result.value
-      : {
-          puuid: players[i].puuid,
-          championName: players[i].championName,
-          rank: null,
-          winrate: null,
-          games: 0,
-          signals: [],
-          unavailable: true,
-        }
-  );
+    const names = await championNames();
+    const now = Date.now();
+    // Riot's own list, capped at the largest lobby (Arena: 16 players).
+    const participants = game.participants.slice(0, 16);
 
-  return NextResponse.json({ reports }, { headers: { "Cache-Control": "private, max-age=60" } });
+    // One player failing (rate limit, transient 5xx) must not hide the other nine.
+    const settled = await Promise.allSettled(
+      participants.map(async (p) => {
+        if (!isPuuid(p.puuid)) throw new Error("bot or hidden player");
+        const [entries, mastery] = await Promise.all([
+          getLeagueEntries(p.puuid, region),
+          getChampionMasteryFor(p.puuid, region, p.championId),
+        ]);
+        const soloQueue = entries.find((e) => e.queueType === "RANKED_SOLO_5x5") ?? null;
+        return scoutPlayer({ championName: names.get(p.championId) ?? "su campeón", soloQueue, mastery }, now);
+      })
+    );
+
+    const players: ScoutedPlayer[] = participants.map((p, i) => {
+      const base = {
+        puuid: p.puuid,
+        teamId: p.teamId,
+        championId: p.championId,
+        championName: names.get(p.championId) ?? "",
+        riotId: p.riotId ?? null,
+      };
+      const result = settled[i];
+      return result.status === "fulfilled"
+        ? { ...base, ...result.value }
+        : { ...base, rank: null, winrate: null, games: 0, signals: [], unavailable: true };
+    });
+
+    return NextResponse.json({ inGame: true, players }, { headers: { "Cache-Control": "private, max-age=60" } });
+  } catch (error) {
+    return riotErrorResponse(error);
+  }
 }

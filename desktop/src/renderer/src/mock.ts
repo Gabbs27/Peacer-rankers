@@ -3,7 +3,7 @@
 // without League running. Never used inside the Electron app.
 
 import type { MatchData } from "@/lib/types";
-import { scoutPlayer, type ScoutReport } from "@/lib/scouting";
+import { scoutPlayer, type ScoutedPlayer } from "@/lib/scouting";
 import {
   INITIAL_STATE,
   type ChampSelectView,
@@ -48,18 +48,19 @@ async function liveGame(path: string) {
     puuid: p.puuid,
     teamId: p.teamId,
     championId: p.championId,
+    championName: p.championName,
     riotId: `${p.riotIdGameName}#${p.riotIdTagline}`,
   }));
   return { inGame: true, game: { gameQueueConfigId: 420, gameLength: 312, participants }, ranks: {} };
 }
 
-/** Varied, plausible reports so every signal style shows up in the preview. */
-function scout(path: string) {
-  const players = new URLSearchParams(path.split("?")[1]).get("players")?.split(",") ?? [];
+/** Your latest real match as the "live" game, with varied reports so every signal style shows. */
+async function scout(path: string) {
+  const { game } = await liveGame(path);
   const now = Date.now();
-  const reports = players.map((entry, i): ScoutReport & { puuid: string; championName: string } => {
-    const [puuid, , championName] = entry.split(":");
-    const tiers = ["GOLD", "PLATINUM", "EMERALD", "SILVER", "EMERALD"];
+  const tiers = ["GOLD", "PLATINUM", "EMERALD", "SILVER", "EMERALD"];
+  const players = game.participants.map((p, i): ScoutedPlayer => {
+    const championName = p.championName;
     const report = scoutPlayer(
       {
         championName,
@@ -84,9 +85,9 @@ function scout(path: string) {
       },
       now
     );
-    return { puuid, championName, ...report };
+    return { puuid: p.puuid, teamId: p.teamId, championId: p.championId, championName, riotId: p.riotId, ...report };
   });
-  return { reports };
+  return { inGame: true, players };
 }
 
 export function createMockBridge(scenario: string | null): CompanionBridge {
@@ -125,7 +126,7 @@ export function createMockBridge(scenario: string | null): CompanionBridge {
     },
     api: async <T>(path: string) => {
       if (path.startsWith("/api/live-game")) return (await liveGame(path)) as T;
-      if (path.startsWith("/api/scout")) return scout(path) as T;
+      if (path.startsWith("/api/scout")) return (await scout(path)) as T;
       return getJson<T>(path);
     },
     importRunePage: async () => ({ ok: true, message: "Runas aplicadas en el cliente (simulado)." }),
