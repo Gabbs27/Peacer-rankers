@@ -78,4 +78,27 @@ describe("offerInsights", () => {
       [1353, 2, 2, 33, false],
     ]);
   });
+
+  it("gives no star when the best card is far from the top", () => {
+    const store = emptyStore();
+    const seen = new Set<number>();
+    let id = 1;
+    // Twelve gold augments Briar's players take more than Tank Engine (1353).
+    const others = Array.from({ length: 12 }, (_, i) => 2000 + i);
+    const catalog = new Map(CATALOG);
+    for (const other of others) {
+      catalog.set(other, info(`Other Gold ${other}`));
+      for (let i = 0; i < 4; i++) addGame(store, seen, game(id++, [other]));
+    }
+    for (let i = 0; i < 2; i++) addGame(store, seen, game(id++, [1353]));
+
+    const offer = offerInsights(store, catalog, 233, [
+      { ids: [13, 1013], x: 0.3 },
+      { ids: [1353], x: 0.6 },
+    ]);
+    expect(offer.map((o) => [o.augmentId, o.rank, o.best])).toEqual([
+      [1013, null, false],
+      [1353, 13, false], // #13 of 13: a weak hint, no star
+    ]);
+  });
 });

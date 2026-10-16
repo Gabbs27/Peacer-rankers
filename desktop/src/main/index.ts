@@ -77,7 +77,7 @@ function onStateForMayhem(state: CompanionState): void {
         });
       }, delay);
     };
-    readFinished([15_000, 60_000, 180_000]);
+    readFinished([15_000, 60_000, 180_000, 600_000]);
   }
   if (state.status !== "connected") {
     collector.stop();

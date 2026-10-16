@@ -78,10 +78,19 @@ export function matchOffer(lines: OcrLine[], index: Map<string, number[]>): Offe
 }
 
 /**
+ * A card is only worth a star near the top of what the champion's players
+ * pick: #18 of 29 is a weak hint, even if the other cards have no data.
+ */
+function strongPick(o: OfferedAugment): boolean {
+  if (o.rank === null) return false;
+  return o.verdict === "up" || o.rank <= Math.min(10, Math.ceil(o.ranked / 2));
+}
+
+/**
  * The offered augments with where each stands among the ones this champion's
  * players pick most (by rarity, as the offers come), and which one to take:
  * the most picked, with one that clearly wins more first and one that clearly
- * loses last.
+ * loses last, and only if it's near the top.
  */
 export function offerInsights(
   store: MayhemStore,
@@ -116,6 +125,6 @@ export function offerInsights(
   const candidates = offered.filter((o) => o.rank !== null);
   const usable = candidates.some((o) => o.verdict !== "down") ? candidates.filter((o) => o.verdict !== "down") : candidates;
   const best = usable.sort((a, b) => (a.verdict === "up" ? -1 : 0) - (b.verdict === "up" ? -1 : 0) || a.rank! - b.rank!)[0];
-  if (best) best.best = true;
+  if (best && strongPick(best)) best.best = true;
   return offered;
 }

@@ -81,8 +81,11 @@ cliente sí las tiene. La app las lee de ahí y las va sumando a un JSON local:
   1,5 s la franja central de la pantalla, reconoce el texto con el framework Vision
   de Apple (en tu Mac, sin internet; `native/ocr.swift`) y lo cruza con el
   catálogo de aumentos. El overlay muestra las cartas con su puesto entre las que
-  más eligen los jugadores de tu campeón y marca la mejor. Las imágenes no se
-  guardan y solo se usan los nombres de aumentos.
+  más eligen los jugadores de tu campeón y marca con ★ la mejor, solo si está
+  arriba de esa lista (o gana claramente más); si no, dice que no hay favorita
+  clara. Las imágenes no se guardan y solo se usan los nombres de aumentos.
+- **Tras reconstruir la app** macOS puede volver a pedir el permiso de pantalla:
+  la firma local cambia con cada compilación.
 - **Nombres e iconos**: el catálogo de aumentos del propio cliente e iconos de
   CommunityDragon.
 - Seguir historiales ajenos desde el cliente no es una API oficial de Riot: por eso

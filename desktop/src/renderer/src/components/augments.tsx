@@ -186,6 +186,9 @@ export function OfferPanel({
         ))}
       </ul>
       {!anyData && <p className="mt-1.5 text-[10.5px] text-gray-500">Aún no hay datos de {who} con estos aumentos.</p>}
+      {anyData && !offer.some((o) => o.best) && (
+        <p className="mt-1.5 text-[10.5px] text-gray-500">Sin favorita clara: ninguna está entre las que más eligen con {who}.</p>
+      )}
     </div>
   );
 }
