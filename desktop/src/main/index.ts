@@ -6,10 +6,13 @@ import { apiGet, isAllowedApiPath, webUrl } from "./backend";
 import { MayhemCollector } from "./mayhem/collector";
 import { loadAugmentCatalog } from "./mayhem/catalog";
 import { championInsights } from "./mayhem/insights";
+import { LiveClient } from "./live-client";
+import { MAYHEM_QUEUE } from "@/lib/mayhem";
 import type { AugmentInfo } from "../shared/augments";
 import { IPC, type CompanionState } from "../shared/types";
 
 const companion = new Companion();
+const live = new LiveClient();
 const collector = new MayhemCollector(join(app.getPath("userData"), "mayhem-stats.json"));
 let augmentCatalog = new Map<number, AugmentInfo>();
 
@@ -116,8 +119,10 @@ function createMainWindow(): BrowserWindow {
  */
 function createOverlayWindow(): BrowserWindow {
   const { workArea } = screen.getPrimaryDisplay();
-  const width = 300;
-  const height = 280;
+  // Transparent and click-through: only the panel drawn in it is visible, so
+  // it can be roomy enough for the Mayhem tier list.
+  const width = 540;
+  const height = 380;
   const win = new BrowserWindow({
     width,
     height,
@@ -139,6 +144,30 @@ function createOverlayWindow(): BrowserWindow {
   harden(win);
   load(win, "overlay");
   return win;
+}
+
+/** Only Mayhem uses the game's live data: the overlay grows while you're dead (when augments are picked). */
+function syncLive(state: CompanionState): void {
+  if (state.status === "connected" && IN_GAME.has(state.phase) && state.queueId === MAYHEM_QUEUE) live.start();
+  else live.stop();
+}
+
+let lastPhase = "None";
+
+/** In champion select the window comes up above the League client, without taking the focus. */
+function syncMainWindow(state: CompanionState): void {
+  const win = mainWindow;
+  if (!win || win.isDestroyed() || state.phase === lastPhase) return;
+  const leaving = lastPhase === "ChampSelect";
+  lastPhase = state.phase;
+  if (state.phase === "ChampSelect") {
+    if (win.isMinimized()) win.restore();
+    win.setAlwaysOnTop(true, "floating");
+    win.showInactive();
+    win.moveTop();
+  } else if (leaving) {
+    win.setAlwaysOnTop(false);
+  }
 }
 
 function syncOverlay(state: CompanionState): void {
@@ -219,15 +248,19 @@ app.whenReady().then(async () => {
   overlayWindow = createOverlayWindow();
   companion.on("state", (state) => {
     broadcast(state);
+    syncMainWindow(state);
     syncOverlay(state);
+    syncLive(state);
     onStateForMayhem(state);
   });
   collector.on("status", (status) => companion.setMayhemStatus(status));
+  live.on("snapshot", (snapshot) => companion.setLive(snapshot));
   await collector.load();
   companion.start();
 });
 
 app.on("before-quit", () => {
+  live.stop();
   collector.stop();
   companion.stop();
 });

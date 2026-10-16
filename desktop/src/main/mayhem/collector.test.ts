@@ -1,8 +1,8 @@
 import { afterEach, describe, it, expect } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ClientGame } from "@/lib/mayhem";
+import { addGame, buildFor, emptyStore, type ClientGame } from "@/lib/mayhem";
 import { LcuError } from "../lcu/http";
 import type { LcuClient } from "../actions";
 import { MayhemCollector } from "./collector";
@@ -34,7 +34,7 @@ function game(gameId: number, opts: { queueId?: number; championId?: number; aug
       championId: i === 0 ? (opts.championId ?? 233) : 100 + i,
       spell1Id: 4,
       spell2Id: 32,
-      stats: { win: i < 5, playerAugment1: opts.augment ?? 1152 },
+      stats: { win: i < 5, playerAugment1: opts.augment ?? 1152, item0: 3031 },
     })),
     participantIdentities: Array.from({ length: 10 }, (_, i) => ({ player: { puuid: `p${gameId}-${i}` } })),
   };
@@ -130,6 +130,42 @@ describe("MayhemCollector", () => {
     });
     await collector.expand(client, () => idle);
     expect(collector.status()).toMatchObject({ games: 2, running: false, runAdded: 1 });
+  });
+});
+
+describe("items in files from before they were stored", () => {
+  it("upgrades the file and fills in its games' items on the next run, once", async () => {
+    const file = await tempFile();
+    const store = emptyStore();
+    const seen = new Set<number>();
+    addGame(store, seen, game(1));
+    addGame(store, seen, game(2));
+    // What version 1 wrote: the same counts without items, plus a game the client no longer has.
+    const v1 = JSON.parse(JSON.stringify(store));
+    v1.version = 1;
+    v1.seen.push(3);
+    delete v1.itemsPending;
+    delete v1.patches["16.20"].augmentItems;
+    for (const c of Object.values(v1.patches["16.20"].champions) as Record<string, unknown>[]) {
+      delete c.items;
+      delete c.itemGames;
+    }
+    await writeFile(file, JSON.stringify(v1));
+
+    const { client, calls } = fakeClient({ own: [], games: { 1: game(1), 2: game(2) } });
+    const collector = new MayhemCollector(file, FAST);
+    await collector.load();
+    expect(collector.status()).toMatchObject({ games: 2, itemsPending: 3 });
+    await collector.expand(client, () => true);
+
+    expect(collector.status()).toMatchObject({ games: 2, itemsPending: 0 });
+    expect(calls.filter((c) => c.includes("/games/"))).toEqual([
+      "/lol-match-history/v1/games/1",
+      "/lol-match-history/v1/games/2",
+      "/lol-match-history/v1/games/3",
+    ]);
+    expect(buildFor(collector.data, 233)).toEqual([{ itemId: 3031, games: 2, wins: 2, pickRate: 100 }]);
+    expect(JSON.parse(await readFile(file, "utf8"))).toMatchObject({ version: 2, itemsPending: [] });
   });
 });
 

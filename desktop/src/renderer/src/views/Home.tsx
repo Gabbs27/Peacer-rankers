@@ -31,7 +31,9 @@ function MayhemData({ mayhem }: { mayhem: MayhemStatus }) {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-gray-400">
-              Analizando… {mayhem.runAdded} de {mayhem.runTarget} partidas nuevas
+              {mayhem.itemsPending > 0
+                ? `Completando objetos de partidas ya leídas… quedan ${mayhem.itemsPending}`
+                : `Analizando… ${mayhem.runAdded} de ${mayhem.runTarget} partidas nuevas`}
             </span>
             <Button variant="ghost" onClick={() => void bridge.stopMayhem()}>
               Detener
@@ -39,8 +41,13 @@ function MayhemData({ mayhem }: { mayhem: MayhemStatus }) {
           </div>
         </div>
       ) : (
-        <div className="mt-3">
+        <div className="mt-3 space-y-1.5">
           <Button onClick={() => void bridge.collectMayhem()}>Analizar más partidas</Button>
+          {mayhem.itemsPending > 0 && (
+            <p className="text-[11px] text-gray-500">
+              Faltan los objetos de {mayhem.itemsPending} partidas: se completan al analizar.
+            </p>
+          )}
         </div>
       )}
       {mayhem.error && <p className="mt-2 text-[11px] text-amber-300">{mayhem.error}</p>}

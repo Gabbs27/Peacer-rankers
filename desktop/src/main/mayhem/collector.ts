@@ -3,8 +3,11 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import {
   addGame,
+  addItems,
   emptyStore,
+  forgetPendingItems,
   MAYHEM_QUEUE,
+  migrateStore,
   patchesNewestFirst,
   totalGames,
   type ClientGame,
@@ -74,8 +77,8 @@ export class MayhemCollector extends EventEmitter<{ status: [MayhemStatus] }> {
 
   async load(): Promise<void> {
     try {
-      const data = JSON.parse(await readFile(this.file, "utf8")) as MayhemStore;
-      if (data?.version === 1 && Array.isArray(data.seen) && data.patches && typeof data.patches === "object") {
+      const data = migrateStore(JSON.parse(await readFile(this.file, "utf8")));
+      if (data) {
         this.store = data;
         this.seen = new Set(data.seen);
       }
@@ -96,6 +99,7 @@ export class MayhemCollector extends EventEmitter<{ status: [MayhemStatus] }> {
       running: this.running,
       runAdded: this.runAdded,
       runTarget: this.runTarget,
+      itemsPending: this.store.itemsPending.length,
       error: this.error,
     };
   }
@@ -154,6 +158,8 @@ export class MayhemCollector extends EventEmitter<{ status: [MayhemStatus] }> {
     const keepGoing = () => !this.stopRequested && this.runAdded < this.runTarget && canRun();
 
     try {
+      if (!(await this.fillItems(client, keepGoing))) return;
+
       // Seed with the players of your own recent Mayhem games, unless a previous run left some to visit.
       if (this.queue.length === 0) {
         const own = await client.get<HistoryPage>(
@@ -200,6 +206,32 @@ export class MayhemCollector extends EventEmitter<{ status: [MayhemStatus] }> {
       await this.save().catch(() => {});
       this.emitStatus();
     }
+  }
+
+  /**
+   * Reads again the games counted before items were stored, for their items.
+   * False when the client stopped answering (the run ends with an error).
+   */
+  private async fillItems(client: LcuClient, keepGoing: () => boolean): Promise<boolean> {
+    let failures = 0;
+    for (const gameId of [...this.store.itemsPending]) {
+      if (!keepGoing()) break;
+      try {
+        addItems(this.store, await client.get<GameDetail>(`/lol-match-history/v1/games/${gameId}`));
+        failures = 0;
+      } catch (error) {
+        if (error instanceof LcuError && error.status === 404) {
+          forgetPendingItems(this.store, gameId); // the client no longer has it
+        } else if (++failures >= MAX_FAILURES) {
+          this.error = "El cliente dejó de responder; vuelve a intentarlo más tarde.";
+          return false;
+        }
+      }
+      if (++this.unsaved >= this.opts.saveEvery) await this.save();
+      this.emitStatus();
+      await sleep(this.opts.delayMs / 2); // known games, one request each
+    }
+    return true;
   }
 
   private async fetchGame(client: LcuClient, gameId: number): Promise<GameDetail | null> {

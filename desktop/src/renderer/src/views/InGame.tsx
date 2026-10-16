@@ -4,8 +4,9 @@ import { MAYHEM_QUEUE } from "@/lib/mayhem";
 import type { Region } from "@/lib/types";
 import type { CompanionState } from "../../../shared/types";
 import { bridge } from "../bridge";
-import { errorMessage, useMayhemInsights, type Champions } from "../data";
+import { errorMessage, useItems, useMayhemInsights, type Champions } from "../data";
 import { AugmentGroups } from "../components/augments";
+import { BuildRow, finishedItems } from "../components/builds";
 import { ChampIcon, Section, SignalChip } from "../components/ui";
 
 type ScoutResponse = { inGame: false } | { inGame: true; players: ScoutedPlayer[] };
@@ -55,17 +56,25 @@ function MayhemGame({ state, champs }: { state: CompanionState; champs: Champion
   const championId = state.gameChampionId ?? 0;
   const insights = useMayhemInsights(championId > 0 ? [championId] : [], state.mayhem.games);
   const champ = champs.byId.get(championId);
+  const items = useItems(champs.version);
   const mine = insights?.[0];
   return (
-    <Section title={champ ? `Aumentos para ${champ.name}` : "Tus aumentos"} aside={mine?.games ? `${mine.games} partidas` : undefined}>
-      {championId === 0 && <p className="text-xs text-gray-400">No se pudo saber tu campeón en esta partida.</p>}
-      {championId > 0 && mine && mine.augments.length > 0 && (
-        <AugmentGroups augments={mine.augments} championName={champ?.name} perGroup={5} />
+    <>
+      {mine && finishedItems(mine.build, items).length > 0 && (
+        <Section title="Build más usada" aside="% de sus partidas">
+          <BuildRow build={mine.build} items={items} version={champs.version} />
+        </Section>
       )}
-      {championId > 0 && insights && (!mine || mine.augments.length === 0) && (
-        <p className="text-xs text-gray-400">Aún no hay suficientes partidas de {champ?.name ?? "este campeón"} en tus datos.</p>
-      )}
-    </Section>
+      <Section title={champ ? `Aumentos para ${champ.name}` : "Tus aumentos"} aside={mine?.games ? `${mine.games} partidas` : undefined}>
+        {championId === 0 && <p className="text-xs text-gray-400">No se pudo saber tu campeón en esta partida.</p>}
+        {championId > 0 && mine && mine.augments.length > 0 && (
+          <AugmentGroups augments={mine.augments} championName={champ?.name} items={items} version={champs.version} perGroup={5} />
+        )}
+        {championId > 0 && insights && (!mine || mine.augments.length === 0) && (
+          <p className="text-xs text-gray-400">Aún no hay suficientes partidas de {champ?.name ?? "este campeón"} en tus datos.</p>
+        )}
+      </Section>
+    </>
   );
 }
 

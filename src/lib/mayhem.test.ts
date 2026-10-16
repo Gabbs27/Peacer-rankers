@@ -1,11 +1,15 @@
 import { describe, it, expect } from "vitest";
 import {
   addGame,
+  addItems,
+  augmentItemsFor,
   augmentsFor,
+  buildFor,
   bestMayhemSpells,
   championWinrates,
   clearlyBetter,
   emptyStore,
+  migrateStore,
   patchOf,
   patchesNewestFirst,
   totalGames,
@@ -15,15 +19,19 @@ import {
 let nextId = 1;
 
 const augmentStats = (ids: number[]) => Object.fromEntries(ids.map((a, i) => [`playerAugment${i + 1}`, a]));
+const itemStats = (ids: number[]) => Object.fromEntries(ids.map((id, i) => [`item${i}`, id]));
 
 /**
  * One Mayhem game: champion 233 (Briar) with `augments`, and nine fillers
- * (champions 1000-1008). The first four are Briar's allies and take `allyAugments`.
+ * (champions 1000-1008). The first four are Briar's allies and take
+ * `allyAugments` and `allyItems`.
  */
 function game(opts: {
   win: boolean;
   augments?: number[];
   allyAugments?: number[];
+  items?: number[];
+  allyItems?: number[];
   spells?: [number, number];
   version?: string;
   queueId?: number;
@@ -34,13 +42,16 @@ function game(opts: {
     championId: 233,
     spell1Id: opts.spells?.[0] ?? 4,
     spell2Id: opts.spells?.[1] ?? 32,
-    stats: { win: opts.win, ...augmentStats(opts.augments ?? []), playerAugment6: 0 },
+    stats: { win: opts.win, ...augmentStats(opts.augments ?? []), ...itemStats(opts.items ?? []), playerAugment6: 0, item6: 2052 },
   };
   const filler = (i: number) => ({
     championId: 1000 + i,
     spell1Id: 4,
     spell2Id: 32,
-    stats: i < 4 ? { win: opts.win, ...augmentStats(opts.allyAugments ?? []) } : { win: !opts.win },
+    stats:
+      i < 4
+        ? { win: opts.win, ...augmentStats(opts.allyAugments ?? []), ...itemStats(opts.allyItems ?? []) }
+        : { win: !opts.win },
   });
   return {
     gameId: opts.id ?? nextId++,
@@ -82,6 +93,76 @@ describe("addGame", () => {
   it("does not split spell samples by D/F order", () => {
     const { store } = storeWith([game({ win: true, spells: [4, 32] }), game({ win: false, spells: [32, 4] })]);
     expect(store.patches["16.20"].champions["233"].spells).toEqual({ "4-32": [2, 1] });
+  });
+});
+
+describe("items", () => {
+  it("counts each player's final items once, the trinket aside, and what each augment's takers built", () => {
+    const { store } = storeWith([game({ win: true, augments: [1152], items: [3031, 3006, 3031] })]);
+    const bucket = store.patches["16.20"];
+    expect(bucket.champions["233"]).toMatchObject({ itemGames: 1, items: { "3031": [1, 1], "3006": [1, 1] } });
+    expect(bucket.champions["233"].items).not.toHaveProperty("2052");
+    expect(bucket.champions["1005"]).toMatchObject({ itemGames: 1, items: {} });
+    expect(bucket.augmentItems).toEqual({ "1152": { "3031": 1, "3006": 1 } });
+  });
+
+  it("reads a version 1 store and fills in the items of its games once", () => {
+    const g = game({ win: true, augments: [1152], items: [3031] });
+    const { store } = storeWith([g]);
+    const v1 = JSON.parse(JSON.stringify({ ...store, version: 1, itemsPending: undefined }));
+    for (const c of Object.values(v1.patches["16.20"].champions) as Record<string, unknown>[]) {
+      delete c.items;
+      delete c.itemGames;
+    }
+    delete v1.patches["16.20"].augmentItems;
+
+    const migrated = migrateStore(v1)!;
+    expect(migrated).toMatchObject({ version: 2, itemsPending: [g.gameId] });
+    expect(buildFor(migrated, 233)).toEqual([]);
+    expect(addItems(migrated, g)).toBe(true);
+    expect(addItems(migrated, g)).toBe(false); // never twice
+    expect(migrated.itemsPending).toEqual([]);
+    expect(totalGames(migrated)).toBe(1);
+    expect(buildFor(migrated, 233)).toEqual([{ itemId: 3031, games: 1, wins: 1, pickRate: 100 }]);
+
+    expect(migrateStore({ version: 2, seen: [1], patches: {} })).toEqual({ version: 2, seen: [1], patches: {}, itemsPending: [] });
+    expect(migrateStore({ version: 3, seen: [], patches: {} })).toBeNull();
+    expect(migrateStore("nope")).toBeNull();
+  });
+
+  it("builds: most built first, as a share of the games with items", () => {
+    const { store } = storeWith([
+      ...repeat(3, { win: true, items: [3031, 3006] }),
+      game({ win: false, items: [3006, 3153] }),
+    ]);
+    expect(buildFor(store, 233)).toEqual([
+      { itemId: 3006, games: 4, wins: 3, pickRate: 100 },
+      { itemId: 3031, games: 3, wins: 3, pickRate: 75 },
+      { itemId: 3153, games: 1, wins: 0, pickRate: 25 },
+    ]);
+  });
+
+  it("pairs an augment with the items its takers build more than their champions usually do", () => {
+    // Briar builds 3031 in half her games, always when she takes 1152; boots (3006) always.
+    // Her allies always build 3089, with or without 2091: AP champions, not an AP augment.
+    const { store } = storeWith([
+      ...repeat(4, { win: true, augments: [1152], items: [3031, 3006], allyAugments: [2091], allyItems: [3089] }),
+      ...repeat(4, { win: false, items: [3006], allyItems: [3089] }),
+    ]);
+    expect(augmentItemsFor(store, 1152)).toEqual([{ itemId: 3031, games: 4, lift: 2 }]);
+    expect(augmentItemsFor(store, 2091)).toEqual([]);
+    expect(augmentItemsFor(store, 9999)).toEqual([]);
+  });
+
+  it("leaves out paired items a champion with enough games never builds", () => {
+    // Allies build 3031 only when they take 1152; Briar never builds it in her 20 games.
+    const { store } = storeWith([
+      ...repeat(4, { win: true, items: [3006], allyAugments: [1152], allyItems: [3031] }),
+      ...repeat(16, { win: true, items: [3006] }),
+    ]);
+    expect(augmentItemsFor(store, 1152).map((p) => p.itemId)).toEqual([3031]);
+    expect(augmentItemsFor(store, 1152, { championId: 1000 }).map((p) => p.itemId)).toEqual([3031]);
+    expect(augmentItemsFor(store, 1152, { championId: 233 })).toEqual([]);
   });
 });
 

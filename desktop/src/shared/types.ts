@@ -3,7 +3,7 @@
 
 import type { Role } from "@/lib/draft";
 import type { RunePage } from "@/lib/rune-pages";
-import type { AugmentPick, SpellPick } from "@/lib/mayhem";
+import type { AugmentPick, ItemPick, SpellPick } from "@/lib/mayhem";
 import type { Region } from "@/lib/types";
 
 /** The client's gameflow phase, e.g. "Lobby", "ChampSelect", "InProgress", "EndOfGame". */
@@ -49,6 +49,8 @@ export interface MayhemStatus {
   running: boolean;
   runAdded: number;
   runTarget: number;
+  /** Games counted before items were stored, still to be read for them. */
+  itemsPending: number;
   error: string | null;
 }
 
@@ -59,6 +61,8 @@ export interface AugmentInsight extends AugmentPick {
   rarity: AugmentRarity;
   /** Image URL, or null when the client did not list the augment. */
   icon: string | null;
+  /** Items its takers build more than usual, best first (finished or not: the window filters). */
+  items: number[];
 }
 
 export interface ChampionInsight {
@@ -69,6 +73,16 @@ export interface ChampionInsight {
   /** Most picked by the champion's players first, up to 8 per rarity. */
   augments: AugmentInsight[];
   spells: SpellPick | null;
+  /** Items the champion's players end with, most built first (the window keeps the finished ones). */
+  build: ItemPick[];
+}
+
+/** What the overlay needs from the game in progress (Riot's Live Client Data API). */
+export interface LiveSnapshot {
+  dead: boolean;
+  level: number;
+  /** Seconds since the game started. */
+  gameTime: number;
 }
 
 export interface CompanionState {
@@ -82,6 +96,8 @@ export interface CompanionState {
   gameChampionId: number | null;
   overlayEnabled: boolean;
   mayhem: MayhemStatus;
+  /** Your state in the game in progress (Mayhem only), or null. */
+  live: LiveSnapshot | null;
 }
 
 export interface ActionResult {
@@ -129,5 +145,6 @@ export const INITIAL_STATE: CompanionState = {
   champSelect: null,
   gameChampionId: null,
   overlayEnabled: true,
-  mayhem: { games: 0, patch: null, running: false, runAdded: 0, runTarget: 0, error: null },
+  mayhem: { games: 0, patch: null, running: false, runAdded: 0, runTarget: 0, itemsPending: 0, error: null },
+  live: null,
 };

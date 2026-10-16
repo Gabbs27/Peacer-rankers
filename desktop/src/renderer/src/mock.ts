@@ -23,6 +23,7 @@ const PHASES: Record<string, string> = {
   postgame: "EndOfGame",
   mayhem: "ChampSelect",
   mayhemgame: "InProgress",
+  mayhemdead: "InProgress",
 };
 
 // Briar jungle hovering; Garen / Jinx / Lux on your team; Graves / Ahri / Darius revealed.
@@ -49,6 +50,10 @@ const MAYHEM_SELECT: ChampSelectView = {
   benchIds: [131, 19],
 };
 
+// Briar's usual finished items, and what a few augments' takers build.
+const BRIAR_BUILD = [3071, 3047, 6692, 3053, 6333, 3026, 3074, 1055, 3153];
+const PAIRED = [[3153, 3031], [3074], [6333, 3026], [], [3089, 4645], [3071]];
+
 // Augment ids seen in real Mayhem games.
 const MAYHEM_AUGMENTS = [1152, 1413, 1074, 2091, 1084, 1373, 1098, 1211, 1328, 1077, 1356, 2080, 2100, 2116, 1061, 1150];
 
@@ -68,6 +73,7 @@ async function mayhemInsights(ids: number[]): Promise<ChampionInsight[]> {
         pickRate: Math.round((games / 340) * 100),
         allGames: games * 6,
         verdict: i % 7 === 0 ? "up" : i % 11 === 5 ? "down" : null,
+        items: PAIRED[i % PAIRED.length],
         name: info?.name ?? `Aumento ${augmentId}`,
         rarity: info?.rarity ?? "other",
         icon: info?.icon ?? null,
@@ -80,6 +86,7 @@ async function mayhemInsights(ids: number[]): Promise<ChampionInsight[]> {
       winrate: [53, 49, 56][c] ?? 50,
       augments,
       spells: { spell1Id: 4, spell2Id: 32, games: 210, wins: 116, pickRate: 62 },
+      build: BRIAR_BUILD.map((itemId, i) => ({ itemId, games: 300 - i * 30, wins: 160 - i * 15, pickRate: 88 - i * 9 })),
     };
   });
 }
@@ -168,8 +175,9 @@ export function createMockBridge(scenario: string | null): CompanionBridge {
         },
         champSelect: phase === "ChampSelect" ? (scenario === "mayhem" ? MAYHEM_SELECT : CHAMP_SELECT) : null,
         queueId: scenario?.startsWith("mayhem") ? 2400 : 420,
-        gameChampionId: scenario === "mayhemgame" ? 233 : null,
-        mayhem: { games: 1384, patch: "16.20", running: false, runAdded: 0, runTarget: 0, error: null },
+        gameChampionId: scenario === "mayhemgame" || scenario === "mayhemdead" ? 233 : null,
+        mayhem: { games: 1384, patch: "16.20", running: false, runAdded: 0, runTarget: 0, itemsPending: 0, error: null },
+        live: scenario === "mayhemdead" ? { dead: true, level: 8, gameTime: 640 } : scenario === "mayhemgame" ? { dead: false, level: 8, gameTime: 640 } : null,
       });
     });
   }

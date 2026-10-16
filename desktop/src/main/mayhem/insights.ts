@@ -1,4 +1,4 @@
-import { augmentsFor, bestMayhemSpells, championWinrates, type MayhemStore } from "@/lib/mayhem";
+import { augmentItemsFor, augmentsFor, bestMayhemSpells, buildFor, championWinrates, type MayhemStore } from "@/lib/mayhem";
 import type { AugmentInsight, AugmentRarity, ChampionInsight } from "../../shared/types";
 import type { AugmentInfo } from "../../shared/augments";
 
@@ -21,7 +21,13 @@ export function championInsights(
       const count = kept.get(rarity) ?? 0;
       if (count >= PER_RARITY) continue;
       kept.set(rarity, count + 1);
-      augments.push({ ...pick, name: info?.name ?? `Aumento ${pick.augmentId}`, rarity, icon: info?.icon ?? null });
+      augments.push({
+        ...pick,
+        name: info?.name ?? `Aumento ${pick.augmentId}`,
+        rarity,
+        icon: info?.icon ?? null,
+        items: augmentItemsFor(store, pick.augmentId, { championId }).map((item) => item.itemId),
+      });
     }
     return {
       championId,
@@ -30,6 +36,7 @@ export function championInsights(
       winrate: winrates[i].winrate,
       augments,
       spells: bestMayhemSpells(store, championId),
+      build: buildFor(store, championId),
     };
   });
 }

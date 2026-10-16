@@ -81,6 +81,10 @@ export class Companion extends EventEmitter<{ state: [CompanionState] }> {
     this.update({ mayhem });
   }
 
+  setLive(live: CompanionState["live"]): void {
+    this.update({ live });
+  }
+
   private update(patch: Partial<CompanionState>): void {
     this.state = { ...this.state, ...patch };
     this.emit("state", this.state);

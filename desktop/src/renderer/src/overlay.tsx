@@ -4,8 +4,10 @@ import { buildTodayPlan } from "@/lib/today-plan";
 import { MAYHEM_QUEUE } from "@/lib/mayhem";
 import { analyzeChampionComp, getDefensiveRecommendations } from "@/lib/builds";
 import { bridge } from "./bridge";
-import { useApiPuuid, useChampions, useCompanionState, useGameGeneration, useHistory, useMayhemInsights } from "./data";
-import { AugmentGroups } from "./components/augments";
+import { useApiPuuid, useChampions, useCompanionState, useGameGeneration, useHistory, useItems, useMayhemInsights } from "./data";
+import type { LiveSnapshot } from "../../shared/types";
+import { AugmentColumns, AugmentGroups } from "./components/augments";
+import { BuildRow } from "./components/builds";
 import { ItemIcon, Sigil } from "./components/ui";
 import "./styles.css";
 
@@ -19,9 +21,13 @@ interface LiveGameResponse {
  * game): your top priority and the build against their composition. No live
  * timers and no calls telling you what to do.
  */
-function Frame({ children }: { children: React.ReactNode }) {
+function Frame({ width = 288, children }: { width?: number; children: React.ReactNode }) {
+  // The window is transparent and click-through: only this panel shows, at the top right.
   return (
-    <div className="m-1 rounded-xl border border-gold-500/25 bg-gray-950/80 p-3 shadow-2xl backdrop-blur-sm">
+    <div
+      className="m-1 ml-auto rounded-xl border border-gold-500/25 bg-gray-950/80 p-3 shadow-2xl backdrop-blur-sm"
+      style={{ width }}
+    >
       <p className="mb-2 flex items-center gap-1.5">
         <Sigil className="h-3.5 w-3.5" />
         <span className="font-display text-[11px] font-bold tracking-wide text-gold-100">LoL Tracker</span>
@@ -31,14 +37,35 @@ function Frame({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Mayhem: your champion's best augments by rarity (static, pre-game data). */
-function MayhemOverlay({ championId, games }: { championId: number; games: number }) {
+/** While you're dead (or right at the start) is when Mayhem lets you pick an augment. */
+const isPickTime = (live: LiveSnapshot | null) => !!live && (live.dead || live.gameTime < 90);
+
+/**
+ * Mayhem: your champion's most picked augments and build (static data). While
+ * you're dead the whole tier list opens, so the three on offer are easy to
+ * find; the rest of the time it stays small.
+ */
+function MayhemOverlay({ championId, games, live }: { championId: number; games: number; live: LiveSnapshot | null }) {
   const insights = useMayhemInsights([championId], games);
-  const augments = insights?.[0]?.augments ?? [];
-  if (augments.length === 0) return null;
+  const champs = useChampions();
+  const items = useItems(champs?.version ?? null);
+  const mine = insights?.[0];
+  if (!mine || mine.augments.length === 0) return null;
+  if (isPickTime(live)) {
+    return (
+      <Frame width={520}>
+        <AugmentColumns augments={mine.augments} items={items} version={champs?.version} />
+      </Frame>
+    );
+  }
   return (
     <Frame>
-      <AugmentGroups augments={augments} perGroup={2} compact />
+      <AugmentGroups augments={mine.augments} perGroup={2} compact />
+      {champs && (
+        <div className="mt-2 border-t border-white/5 pt-2">
+          <BuildRow build={mine.build} items={items} version={champs.version} size={22} />
+        </div>
+      )}
     </Frame>
   );
 }
@@ -46,7 +73,7 @@ function MayhemOverlay({ championId, games }: { championId: number; games: numbe
 function Overlay() {
   const state = useCompanionState();
   if (state.queueId === MAYHEM_QUEUE && state.gameChampionId && (state.phase === "InProgress" || state.phase === "Reconnect")) {
-    return <MayhemOverlay championId={state.gameChampionId} games={state.mayhem.games} />;
+    return <MayhemOverlay championId={state.gameChampionId} games={state.mayhem.games} live={state.live} />;
   }
   return <RiftOverlay />;
 }
