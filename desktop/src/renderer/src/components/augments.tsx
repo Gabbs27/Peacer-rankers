@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AugmentInsight, AugmentRarity } from "../../../shared/types";
+import type { AugmentInsight, AugmentRarity, OfferedAugment } from "../../../shared/types";
 import type { ItemInfo } from "../data";
 import { pairedFinished } from "./builds";
 import { ItemIcon } from "./ui";
@@ -14,7 +14,7 @@ function groupsOf(augments: AugmentInsight[]) {
   return GROUPS.map((g) => ({ ...g, items: augments.filter((a) => a.rarity === g.rarity) })).filter((g) => g.items.length > 0);
 }
 
-function AugmentIcon({ augment, size, ring }: { augment: AugmentInsight; size: number; ring: string }) {
+function AugmentIcon({ augment, size, ring }: { augment: { icon: string | null }; size: number; ring: string }) {
   return augment.icon ? (
     <img
       src={augment.icon}
@@ -30,10 +30,11 @@ function AugmentIcon({ augment, size, ring }: { augment: AugmentInsight; size: n
   );
 }
 
-function Verdict({ augment, compact }: { augment: AugmentInsight; compact: boolean }) {
+function Verdict({ augment, compact }: { augment: Pick<AugmentInsight, "verdict"> & { allGames?: number }; compact: boolean }) {
   if (!augment.verdict) return null;
   const up = augment.verdict === "up";
-  const title = `En ${augment.allGames.toLocaleString("es")} partidas con cualquier campeón gana claramente ${up ? "más" : "menos"} de lo normal`;
+  const where = augment.allGames ? `En ${augment.allGames.toLocaleString("es")} partidas con cualquier campeón g` : "G";
+  const title = `${where}ana claramente ${up ? "más" : "menos"} de lo normal`;
   return (
     <span title={title} className={`font-semibold ${up ? "text-emerald-300" : "text-red-300"}`}>
       {up ? "▲" : "▼"}
@@ -50,7 +51,7 @@ function PairedItems({
   size,
   limit = 2,
 }: {
-  augment: AugmentInsight;
+  augment: { items: number[] };
   items: Map<number, ItemInfo> | null;
   version: string | undefined;
   size: number;
@@ -79,6 +80,7 @@ export function AugmentGroups({
   version,
   perGroup = 4,
   compact = false,
+  ranked = false,
 }: {
   augments: AugmentInsight[];
   championName?: string;
@@ -86,6 +88,8 @@ export function AugmentGroups({
   version?: string;
   perGroup?: number;
   compact?: boolean;
+  /** Numbers each row (the overlay's tier list, to find the cards on offer by position). */
+  ranked?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const groups = groupsOf(augments);
@@ -99,8 +103,9 @@ export function AugmentGroups({
         <div key={group.rarity}>
           <p className="label mb-1">{group.label}</p>
           <ul className={compact ? "space-y-1" : "space-y-1.5"}>
-            {(expanded ? group.items : group.items.slice(0, perGroup)).map((a) => (
+            {(expanded ? group.items : group.items.slice(0, perGroup)).map((a, i) => (
               <li key={a.augmentId} className="flex items-center gap-2">
+                {ranked && <span className="w-3 shrink-0 text-right text-[10px] tabular-nums text-gray-500">{i + 1}</span>}
                 <AugmentIcon augment={a} size={size} ring={group.ring} />
                 <span className="min-w-0 flex-1">
                   <span className={`block truncate text-gray-100 ${compact ? "text-[12px]" : "text-[13px]"}`}>{a.name}</span>
@@ -117,7 +122,7 @@ export function AugmentGroups({
                     <Verdict augment={a} compact />
                   </span>
                 )}
-                {!compact && <PairedItems augment={a} items={items} version={version} size={20} />}
+                <PairedItems augment={a} items={items} version={version} size={compact ? 16 : 20} limit={compact ? 1 : 2} />
                 <span className="w-8 text-right text-[11px] font-semibold text-gray-300" title={`Lo llevan el ${a.pickRate}% de las partidas de ${who}`}>
                   {a.pickRate}%
                 </span>
@@ -140,45 +145,47 @@ export function AugmentGroups({
 }
 
 /**
- * The overlay while you're dead, which is when Mayhem lets you pick: every
- * rarity side by side, most picked first, so the three on offer are easy to
- * find by their icon, with the item that goes with each.
+ * The augments the game is offering you, read from the screen: where each
+ * stands among the ones your champion's players pick, and the best bet.
  */
-export function AugmentColumns({
-  augments,
+export function OfferPanel({
+  offer,
+  championName,
   items,
   version,
-  perGroup = 6,
 }: {
-  augments: AugmentInsight[];
+  offer: OfferedAugment[];
+  championName?: string;
   items: Map<number, ItemInfo> | null;
   version: string | undefined;
-  perGroup?: number;
 }) {
-  const groups = groupsOf(augments);
-  if (groups.length === 0) return null;
+  const group = GROUPS.find((g) => g.rarity === offer[0]?.rarity);
+  const who = championName ?? "tu campeón";
+  const anyData = offer.some((o) => o.rank !== null);
   return (
-    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }}>
-      {groups.map((group) => (
-        <div key={group.rarity} className="min-w-0">
-          <p className="label mb-1">{group.label}</p>
-          <ol className="space-y-1">
-            {group.items.slice(0, perGroup).map((a, i) => (
-              <li key={a.augmentId} className="flex items-center gap-1.5">
-                <span className="w-2.5 shrink-0 text-right text-[10px] tabular-nums text-gray-500">{i + 1}</span>
-                <AugmentIcon augment={a} size={22} ring={group.ring} />
-                <span className="min-w-0 flex-1 truncate text-[11.5px] text-gray-100">{a.name}</span>
-                {a.verdict && (
-                  <span className="text-[10px]">
-                    <Verdict augment={a} compact />
-                  </span>
-                )}
-                <PairedItems augment={a} items={items} version={version} size={16} limit={1} />
-              </li>
-            ))}
-          </ol>
-        </div>
-      ))}
+    <div>
+      <p className="label mb-1.5">Te ofrecen{group ? ` · ${group.label}` : ""}</p>
+      <ul className="space-y-1">
+        {offer.map((o) => (
+          <li
+            key={o.augmentId}
+            className={`flex items-center gap-2 rounded-lg px-1.5 py-1 ${o.best ? "bg-gold-500/15 ring-1 ring-gold-400/60" : ""}`}
+          >
+            <AugmentIcon augment={o} size={26} ring={group?.ring ?? "ring-white/10"} />
+            <span className="min-w-0 flex-1">
+              <span className={`block truncate text-[12.5px] ${o.best ? "font-semibold text-gold-100" : "text-gray-100"}`}>{o.name}</span>
+              <span className="block truncate text-[10.5px] text-gray-400">
+                {o.best && <span className="font-bold text-gold-100">★ Mejor · </span>}
+                {o.rank !== null ? `#${o.rank} de ${o.ranked} con ${who} · ${o.pickRate}%` : `Casi no lo eligen con ${who}`}
+                {o.verdict && " · "}
+                <Verdict augment={o} compact={false} />
+              </span>
+            </span>
+            <PairedItems augment={o} items={items} version={version} size={16} />
+          </li>
+        ))}
+      </ul>
+      {!anyData && <p className="mt-1.5 text-[10.5px] text-gray-500">Aún no hay datos de {who} con estos aumentos.</p>}
     </div>
   );
 }

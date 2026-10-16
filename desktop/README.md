@@ -7,7 +7,7 @@ juegas, con los datos de tus propias partidas:
 |---|---|
 | **Selección de campeones** | Ordena tu pool con tu récord en tu rol, contra el tipo de composición enemiga y contra los campeones rivales revelados, más el balance de daño con tu equipo. Para tu campeón: tu página de runas y tus hechizos con mejor balance (se aplican al cliente con un clic) y la build contra su composición. |
 | **Pantalla de carga / partida** | Scouting de los 10 jugadores: rango, winrate y señales como "primera vez con X", "especialista en X" o "en racha". Overlay opcional con tu prioridad y tu build. |
-| **ARAM: Mayhem** | Los aumentos que más eligen los jugadores de tu campeón, por rareza (como te los ofrece el juego) y con los objetos que arma quien los toma; la build más usada, los hechizos más elegidos y tu banquillo. En la partida, todo en la ventana y en el overlay, que despliega la tier list completa mientras estás muerto (cuando Mayhem te deja elegir). |
+| **ARAM: Mayhem** | Los aumentos que más eligen los jugadores de tu campeón, por rareza (como te los ofrece el juego) y con los objetos que arma quien los toma; la build más usada, los hechizos más elegidos y tu banquillo. En la partida, todo en la ventana y en el overlay: mientras eliges aumento lee las cartas que te salen y marca la mejor (o, sin permiso de pantalla, despliega la tier list). |
 | **Fin de partida** | Enlace a tu análisis completo en la web. |
 
 Todo se calcula con tu historial, salvo Mayhem, que usa las partidas que la app lee
@@ -18,7 +18,8 @@ encima del cliente sin quitarle el foco.
 ## Requisitos
 
 - macOS con Apple Silicon y League of Legends instalado.
-- Node 20 o superior para compilarla.
+- Node 20 o superior y las herramientas de Xcode (`swiftc`, para el lector de
+  texto) para compilarla.
 
 ## Uso
 
@@ -73,8 +74,15 @@ cliente sí las tiene. La app las lee de ahí y las va sumando a un JSON local:
   no sale «emparejado» con objetos de AP solo porque lo toman magos.
 - **En la partida**: la app lee de la API local oficial del juego (Live Client
   Data, `127.0.0.1:2999`) solo si estás muerto, tu nivel y el tiempo de partida.
-  Mayhem te deja elegir aumento al morir, así que el overlay muestra la tier list
-  completa mientras estás muerto y al empezar, y un resumen el resto del tiempo.
+  Esa API no dice nada de aumentos. Mayhem te deja elegir al morir y al empezar,
+  así que solo entonces el overlay crece; el resto del tiempo es un resumen.
+- **Cartas en pantalla**: con permiso de grabación de pantalla (lo das tú en
+  Ajustes del Sistema → Privacidad y seguridad), mientras eliges la app mira cada
+  1,5 s la franja central de la pantalla, reconoce el texto con el framework Vision
+  de Apple (en tu Mac, sin internet; `native/ocr.swift`) y lo cruza con el
+  catálogo de aumentos. El overlay muestra las cartas con su puesto entre las que
+  más eligen los jugadores de tu campeón y marca la mejor. Las imágenes no se
+  guardan y solo se usan los nombres de aumentos.
 - **Nombres e iconos**: el catálogo de aumentos del propio cliente e iconos de
   CommunityDragon.
 - Seguir historiales ajenos desde el cliente no es una API oficial de Riot: por eso
@@ -83,9 +91,10 @@ cliente sí las tiene. La app las lee de ahí y las va sumando a un JSON local:
 ## Reglas de Riot
 
 - El overlay solo muestra información estática de antes de la partida: nada de
-  temporizadores, seguimiento de cooldowns ni avisos que te digan qué hacer. En
-  Mayhem cambia cuánto muestra (más mientras estás muerto), no qué dice: no lee los
-  aumentos que te ofrece el juego ni te dice cuál tomar.
+  temporizadores, seguimiento de cooldowns ni avisos que te digan qué hacer. La
+  excepción es elegir aumento en Mayhem: como en las apps que lo ofrecen (Blitz,
+  Mobalytics, YOUR.GG), el overlay ordena las cartas que te salen con datos y
+  marca la mejor.
 - En la selección de campeones no se muestran ni se buscan nombres (Riot los oculta
   en Solo/Duo); el scouting empieza cuando la partida carga.
 - Las runas solo se escriben al pulsar el botón, y la app solo reemplaza la página
@@ -100,7 +109,8 @@ cliente sí las tiene. La app las lee de ahí y las va sumando a un JSON local:
 - `npm run web`: la interfaz en el navegador con datos reales y una fase simulada:
   `http://localhost:5173/?scenario=champselect` (también `home`, `ingame`,
   `postgame`, `mayhem` y `mayhemgame`) y `/overlay.html?scenario=ingame` (o
-  `mayhemgame`, y `mayhemdead` para el overlay desplegado).
+  `mayhemgame`, `mayhemdead` para la tier list y `mayhemoffer` para las cartas
+  leídas).
 - `LOL_TRACKER_LCU=<puerto>:<token>`: conecta la app a un cliente concreto (por
   ejemplo uno falso para pruebas) aunque el real esté abierto.
 - `LOL_TRACKER_WEB=http://localhost:3000`: usa una API web local en vez de producción.

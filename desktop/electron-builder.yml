@@ -5,6 +5,10 @@ directories:
 files:
   - out/**
   - package.json
+# The on-device text reader for the augment cards (built by `npm run build:ocr`).
+extraResources:
+  - from: resources/ocr
+    to: ocr
 mac:
   category: public.app-category.games
   target:

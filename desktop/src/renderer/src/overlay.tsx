@@ -5,8 +5,8 @@ import { MAYHEM_QUEUE } from "@/lib/mayhem";
 import { analyzeChampionComp, getDefensiveRecommendations } from "@/lib/builds";
 import { bridge } from "./bridge";
 import { useApiPuuid, useChampions, useCompanionState, useGameGeneration, useHistory, useItems, useMayhemInsights } from "./data";
-import type { LiveSnapshot } from "../../shared/types";
-import { AugmentColumns, AugmentGroups } from "./components/augments";
+import type { LiveSnapshot, OfferedAugment } from "../../shared/types";
+import { AugmentGroups, OfferPanel } from "./components/augments";
 import { BuildRow } from "./components/builds";
 import { ItemIcon, Sigil } from "./components/ui";
 import "./styles.css";
@@ -41,20 +41,39 @@ function Frame({ width = 288, children }: { width?: number; children: React.Reac
 const isPickTime = (live: LiveSnapshot | null) => !!live && (live.dead || live.gameTime < 90);
 
 /**
- * Mayhem: your champion's most picked augments and build (static data). While
- * you're dead the whole tier list opens, so the three on offer are easy to
- * find; the rest of the time it stays small.
+ * Mayhem: your champion's most picked augments and build. While you pick
+ * (dead, or at the start) it shows the cards on offer ranked, read from the
+ * screen, or else the whole tier list to find them by icon; the rest of the
+ * time it stays small.
  */
-function MayhemOverlay({ championId, games, live }: { championId: number; games: number; live: LiveSnapshot | null }) {
+function MayhemOverlay({
+  championId,
+  games,
+  live,
+  offer,
+}: {
+  championId: number;
+  games: number;
+  live: LiveSnapshot | null;
+  offer: OfferedAugment[] | null;
+}) {
   const insights = useMayhemInsights([championId], games);
   const champs = useChampions();
   const items = useItems(champs?.version ?? null);
   const mine = insights?.[0];
+  const name = champs?.byId.get(championId)?.name;
+  if (isPickTime(live) && offer && offer.length >= 2) {
+    return (
+      <Frame>
+        <OfferPanel offer={offer} championName={name} items={items} version={champs?.version} />
+      </Frame>
+    );
+  }
   if (!mine || mine.augments.length === 0) return null;
   if (isPickTime(live)) {
     return (
-      <Frame width={520}>
-        <AugmentColumns augments={mine.augments} items={items} version={champs?.version} />
+      <Frame>
+        <AugmentGroups augments={mine.augments} items={items} version={champs?.version} perGroup={6} compact ranked />
       </Frame>
     );
   }
@@ -73,7 +92,7 @@ function MayhemOverlay({ championId, games, live }: { championId: number; games:
 function Overlay() {
   const state = useCompanionState();
   if (state.queueId === MAYHEM_QUEUE && state.gameChampionId && (state.phase === "InProgress" || state.phase === "Reconnect")) {
-    return <MayhemOverlay championId={state.gameChampionId} games={state.mayhem.games} live={state.live} />;
+    return <MayhemOverlay championId={state.gameChampionId} games={state.mayhem.games} live={state.live} offer={state.offer} />;
   }
   return <RiftOverlay />;
 }

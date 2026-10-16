@@ -17,6 +17,7 @@ const bridge: CompanionBridge = {
   mayhemInsights: (championIds) => ipcRenderer.invoke(IPC.mayhemInsights, championIds),
   collectMayhem: () => ipcRenderer.invoke(IPC.collectMayhem),
   stopMayhem: () => ipcRenderer.invoke(IPC.stopMayhem),
+  requestScreenAccess: () => ipcRenderer.invoke(IPC.requestScreenAccess),
 };
 
 contextBridge.exposeInMainWorld("companion", bridge);

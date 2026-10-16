@@ -85,6 +85,14 @@ export class Companion extends EventEmitter<{ state: [CompanionState] }> {
     this.update({ live });
   }
 
+  setOffer(offer: CompanionState["offer"]): void {
+    this.update({ offer });
+  }
+
+  setScreenAccess(screenAccess: CompanionState["screenAccess"]): void {
+    if (screenAccess !== this.state.screenAccess) this.update({ screenAccess });
+  }
+
   private update(patch: Partial<CompanionState>): void {
     this.state = { ...this.state, ...patch };
     this.emit("state", this.state);

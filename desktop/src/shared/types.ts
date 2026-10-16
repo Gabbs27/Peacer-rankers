@@ -3,7 +3,7 @@
 
 import type { Role } from "@/lib/draft";
 import type { RunePage } from "@/lib/rune-pages";
-import type { AugmentPick, ItemPick, SpellPick } from "@/lib/mayhem";
+import type { AugmentPick, ItemPick, SpellPick, Verdict } from "@/lib/mayhem";
 import type { Region } from "@/lib/types";
 
 /** The client's gameflow phase, e.g. "Lobby", "ChampSelect", "InProgress", "EndOfGame". */
@@ -77,6 +77,29 @@ export interface ChampionInsight {
   build: ItemPick[];
 }
 
+/** An augment the game is offering you right now (read from the screen), and where it stands. */
+export interface OfferedAugment {
+  augmentId: number;
+  name: string;
+  rarity: AugmentRarity;
+  icon: string | null;
+  /** Position among the augments of its rarity this champion's players pick most (1 = most), or null without data. */
+  rank: number | null;
+  /** How many augments of this rarity have data for the champion. */
+  ranked: number;
+  pickRate: number | null;
+  games: number;
+  wins: number;
+  verdict: Verdict;
+  /** Items its takers build more than usual. */
+  items: number[];
+  /** The one to take. */
+  best: boolean;
+}
+
+/** macOS screen-recording permission, needed to read the augments on offer. */
+export type ScreenAccess = "granted" | "denied" | "not-determined" | "restricted" | "unknown";
+
 /** What the overlay needs from the game in progress (Riot's Live Client Data API). */
 export interface LiveSnapshot {
   dead: boolean;
@@ -98,6 +121,9 @@ export interface CompanionState {
   mayhem: MayhemStatus;
   /** Your state in the game in progress (Mayhem only), or null. */
   live: LiveSnapshot | null;
+  /** The augments on screen to pick from, while you're picking; null otherwise. */
+  offer: OfferedAugment[] | null;
+  screenAccess: ScreenAccess;
 }
 
 export interface ActionResult {
@@ -122,6 +148,8 @@ export interface CompanionBridge {
   /** Starts following other players' Mayhem games (stops by itself). */
   collectMayhem(): Promise<void>;
   stopMayhem(): Promise<void>;
+  /** Asks macOS for screen recording (to read the augments on offer); opens its settings if needed. */
+  requestScreenAccess(): Promise<ScreenAccess>;
 }
 
 export const IPC = {
@@ -135,6 +163,7 @@ export const IPC = {
   mayhemInsights: "companion:mayhem-insights",
   collectMayhem: "companion:collect-mayhem",
   stopMayhem: "companion:stop-mayhem",
+  requestScreenAccess: "companion:request-screen-access",
 } as const;
 
 export const INITIAL_STATE: CompanionState = {
@@ -147,4 +176,6 @@ export const INITIAL_STATE: CompanionState = {
   overlayEnabled: true,
   mayhem: { games: 0, patch: null, running: false, runAdded: 0, runTarget: 0, itemsPending: 0, error: null },
   live: null,
+  offer: null,
+  screenAccess: "unknown",
 };

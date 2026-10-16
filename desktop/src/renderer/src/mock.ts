@@ -12,6 +12,7 @@ import {
   type ChampionInsight,
   type CompanionBridge,
   type CompanionState,
+  type OfferedAugment,
 } from "../../shared/types";
 
 const ACCOUNT = { gameName: "xICEBRIEL", tagLine: "LAN", region: "la1" as const };
@@ -24,6 +25,7 @@ const PHASES: Record<string, string> = {
   mayhem: "ChampSelect",
   mayhemgame: "InProgress",
   mayhemdead: "InProgress",
+  mayhemoffer: "InProgress",
 };
 
 // Briar jungle hovering; Garen / Jinx / Lux on your team; Graves / Ahri / Darius revealed.
@@ -89,6 +91,31 @@ async function mayhemInsights(ids: number[]): Promise<ChampionInsight[]> {
       build: BRIAR_BUILD.map((itemId, i) => ({ itemId, games: 300 - i * 30, wins: 160 - i * 15, pickRate: 88 - i * 9 })),
     };
   });
+}
+
+/** The three cards of a real Mayhem pick (Leona), ranked the way the screen reader would. */
+async function mockOffer(): Promise<OfferedAugment[]> {
+  const catalog = parseAugmentCatalog(
+    await fetch("https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/cherry-augments.json").then((r) => r.json())
+  );
+  const card = (augmentId: number, rank: number | null, pickRate: number | null, items: number[], best = false): OfferedAugment => {
+    const info = catalog.get(augmentId);
+    return {
+      augmentId,
+      name: info?.name ?? `Aumento ${augmentId}`,
+      rarity: info?.rarity ?? "gold",
+      icon: info?.icon ?? null,
+      rank,
+      ranked: 8,
+      pickRate,
+      games: rank ? 12 : 0,
+      wins: rank ? 7 : 0,
+      verdict: null,
+      items,
+      best,
+    };
+  };
+  return [card(1020, 2, 20, [3083, 3065], true), card(1013, null, null, []), card(1353, 4, 13, [3083])];
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -175,10 +202,17 @@ export function createMockBridge(scenario: string | null): CompanionBridge {
         },
         champSelect: phase === "ChampSelect" ? (scenario === "mayhem" ? MAYHEM_SELECT : CHAMP_SELECT) : null,
         queueId: scenario?.startsWith("mayhem") ? 2400 : 420,
-        gameChampionId: scenario === "mayhemgame" || scenario === "mayhemdead" ? 233 : null,
+        gameChampionId: scenario?.startsWith("mayhem") && scenario !== "mayhem" ? 233 : null,
         mayhem: { games: 1384, patch: "16.20", running: false, runAdded: 0, runTarget: 0, itemsPending: 0, error: null },
-        live: scenario === "mayhemdead" ? { dead: true, level: 8, gameTime: 640 } : scenario === "mayhemgame" ? { dead: false, level: 8, gameTime: 640 } : null,
+        live:
+          scenario === "mayhemdead" || scenario === "mayhemoffer"
+            ? { dead: true, level: 8, gameTime: 640 }
+            : scenario === "mayhemgame"
+              ? { dead: false, level: 8, gameTime: 640 }
+              : null,
+        screenAccess: scenario === "home" ? "not-determined" : "granted",
       });
+      if (scenario === "mayhemoffer") void mockOffer().then((offer) => emit({ offer }));
     });
   }
 
@@ -212,5 +246,6 @@ export function createMockBridge(scenario: string | null): CompanionBridge {
       }, 150);
     },
     stopMayhem: async () => emit({ mayhem: { ...state.mayhem, running: false } }),
+    requestScreenAccess: async () => "denied",
   };
 }

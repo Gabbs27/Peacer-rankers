@@ -1,7 +1,8 @@
 import type { MatchData } from "@/lib/types";
 import { buildTodayPlan } from "@/lib/today-plan";
 import { recentForm } from "@/lib/social-stats";
-import type { MayhemStatus, Me } from "../../../shared/types";
+import { useState } from "react";
+import type { MayhemStatus, Me, ScreenAccess } from "../../../shared/types";
 import { bridge } from "../bridge";
 import { profilePath } from "../data";
 import { Button, Section } from "../components/ui";
@@ -13,9 +14,47 @@ interface Props {
   matches: MatchData[] | null;
   error: string | null;
   mayhem: MayhemStatus;
+  screenAccess: ScreenAccess;
 }
 
-function MayhemData({ mayhem }: { mayhem: MayhemStatus }) {
+/** Reading the augments on offer needs macOS's screen-recording permission, which only the user can give. */
+function ScreenReading({ access }: { access: ScreenAccess }) {
+  const [asked, setAsked] = useState(false);
+  if (access === "granted") {
+    return (
+      <p className="mt-3 border-t border-white/5 pt-2 text-[11px] text-emerald-300/90">
+        Lectura de aumentos activa: al elegir, el overlay marca la mejor de las cartas que te salen.
+      </p>
+    );
+  }
+  return (
+    <div className="mt-3 space-y-1.5 border-t border-white/5 pt-2">
+      <p className="text-[11px] leading-snug text-gray-400">
+        Para que el overlay marque cuál tomar entre las cartas que te salen, dale a LoL Tracker permiso de grabación de
+        pantalla. Solo mira el centro de la pantalla mientras eliges aumento, y nada sale de tu Mac.
+      </p>
+      <Button
+        variant="ghost"
+        onClick={() =>
+          void bridge
+            .requestScreenAccess()
+            .then(() => setAsked(true))
+            .catch(() => setAsked(true))
+        }
+      >
+        Dar permiso de pantalla
+      </Button>
+      {asked && (
+        <p className="text-[11px] text-amber-300">
+          Actívalo para LoL Tracker en Ajustes del Sistema → Privacidad y seguridad → Grabación de pantalla, y luego cierra y
+          vuelve a abrir la app.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function MayhemData({ mayhem, screenAccess }: { mayhem: MayhemStatus; screenAccess: ScreenAccess }) {
   const progress = mayhem.runTarget > 0 ? Math.min(100, Math.round((mayhem.runAdded / mayhem.runTarget) * 100)) : 0;
   return (
     <Section title="Datos de ARAM: Mayhem" aside={mayhem.patch ? `parche ${mayhem.patch}` : undefined}>
@@ -51,11 +90,12 @@ function MayhemData({ mayhem }: { mayhem: MayhemStatus }) {
         </div>
       )}
       {mayhem.error && <p className="mt-2 text-[11px] text-amber-300">{mayhem.error}</p>}
+      <ScreenReading access={screenAccess} />
     </Section>
   );
 }
 
-export default function Home({ me, puuid, matches, error, mayhem }: Props) {
+export default function Home({ me, puuid, matches, error, mayhem, screenAccess }: Props) {
   const plan = matches ? buildTodayPlan(matches, puuid) : null;
   const form = matches ? recentForm(matches, puuid) : [];
 
@@ -89,7 +129,7 @@ export default function Home({ me, puuid, matches, error, mayhem }: Props) {
         </Section>
       )}
 
-      <MayhemData mayhem={mayhem} />
+      <MayhemData mayhem={mayhem} screenAccess={screenAccess} />
 
       <div className="flex justify-center pt-1">
         <Button variant="ghost" onClick={() => void bridge.openWeb(profilePath(me))}>

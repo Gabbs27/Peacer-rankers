@@ -51,7 +51,10 @@ export default function App() {
   } else if (IN_GAME.has(state.phase)) {
     body = <InGame puuid={account.puuid} region={me.region} state={state} champs={champs} />;
   } else if (POST_GAME.has(state.phase)) body = <PostGame me={me} />;
-  else body = <Home me={me} puuid={account.puuid} matches={matches} error={error} mayhem={state.mayhem} />;
+  else
+    body = (
+      <Home me={me} puuid={account.puuid} matches={matches} error={error} mayhem={state.mayhem} screenAccess={state.screenAccess} />
+    );
 
   return (
     <div className="flex h-full flex-col">

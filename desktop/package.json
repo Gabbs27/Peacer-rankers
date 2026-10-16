@@ -12,7 +12,8 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "dist": "electron-vite build && electron-builder --mac --arm64 --dir && codesign --force --deep --sign - \"release/mac-arm64/LoL Tracker.app\""
+    "build:ocr": "mkdir -p resources && swiftc -O -o resources/ocr native/ocr.swift",
+    "dist": "npm run build:ocr && electron-vite build && electron-builder --mac --arm64 --dir && codesign --force --deep --sign - \"release/mac-arm64/LoL Tracker.app\""
   },
   "dependencies": {
     "ws": "^8.22.0"
