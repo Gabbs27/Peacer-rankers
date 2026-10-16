@@ -1,0 +1,101 @@
+@import "@fontsource/cinzel/600.css";
+@import "@fontsource/cinzel/700.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+@import "tailwindcss";
+
+/* Same "Hextech Noir" palette as the website. */
+@theme {
+  --color-gray-50: #f4f6fa;
+  --color-gray-100: #e8ebf3;
+  --color-gray-200: #d3d9e6;
+  --color-gray-300: #b4bdd1;
+  --color-gray-400: #8b96ad;
+  --color-gray-500: #5b6880;
+  --color-gray-600: #2e3a54;
+  --color-gray-700: #1b2438;
+  --color-gray-800: #121a2c;
+  --color-gray-900: #0b1120;
+  --color-gray-950: #060a14;
+
+  --color-gold-100: #f0e6d2;
+  --color-gold-400: #e3c98a;
+  --color-gold-500: #c8aa6e;
+  --color-gold-700: #785a28;
+  --color-arcane-500: #0ac8b9;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cinzel", serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--color-gray-100);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--color-gray-950);
+  background-image:
+    radial-gradient(700px 360px at 0% -10%, rgba(200, 170, 110, 0.09), transparent 60%),
+    radial-gradient(600px 420px at 110% 110%, rgba(10, 200, 185, 0.07), transparent 55%);
+  user-select: none;
+}
+
+body.overlay {
+  background: transparent;
+}
+
+.drag {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.panel {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(200, 170, 110, 0.14);
+  background: linear-gradient(165deg, rgba(27, 36, 56, 0.7), rgba(11, 17, 32, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(240, 230, 210, 0.05),
+    0 12px 32px -20px rgba(0, 0, 0, 0.9);
+}
+
+.label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-gray-500);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-arcane-500);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-in {
+  animation: fade-in 0.25s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
+}

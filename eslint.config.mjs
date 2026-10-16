@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The macOS companion app has its own toolchain (desktop/package.json).
+    "desktop/**",
   ]),
 ]);
 

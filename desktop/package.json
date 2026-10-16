@@ -1,0 +1,39 @@
+{
+  "name": "lol-tracker-desktop",
+  "productName": "LoL Tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Companion de LoL Tracker para macOS: asistente de draft, runas y scouting.",
+  "author": "Gabbs27",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "web": "electron-vite dev --rendererOnly",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "dist": "electron-vite build && electron-builder --mac --arm64 --dir && codesign --force --deep --sign - \"release/mac-arm64/LoL Tracker.app\""
+  },
+  "dependencies": {
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@fontsource/cinzel": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^20.19.43",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.2",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^39.8.10",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^3.1.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.4",
+    "vitest": "^4.1.12"
+  }
+}

@@ -28,7 +28,9 @@ export async function proxy(request: NextRequest) {
     request.headers.get("x-real-ip") ||
     "anonymous";
 
-  const { success, limit, remaining, reset } = await ratelimit.limit(ip);
+  // Scouting fans out to ~20 Riot calls (10 players x 2), so it costs more.
+  const cost = request.nextUrl.pathname === "/api/scout" ? 10 : 1;
+  const { success, limit, remaining, reset } = await ratelimit.limit(ip, { rate: cost });
 
   if (!success) {
     return NextResponse.json(
