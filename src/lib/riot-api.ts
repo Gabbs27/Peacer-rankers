@@ -94,6 +94,12 @@ const matchSchema = z.object({
 const masterySchema = z.array(
   z.object({ championId: z.number(), championLevel: z.number(), championPoints: z.number() })
 );
+const masteryEntrySchema = z.object({
+  championId: z.number(),
+  championLevel: z.number(),
+  championPoints: z.number(),
+  lastPlayTime: z.number(),
+});
 const challengePointsSchema = z.object({
   level: z.string(),
   current: z.number(),
@@ -266,6 +272,25 @@ export async function getChampionMastery(
       masterySchema
     )
   );
+}
+
+/** Mastery on one champion, or null when the player has never played it (Riot answers 404). */
+export async function getChampionMasteryFor(
+  puuid: string,
+  region: Region,
+  championId: number
+): Promise<ChampionMastery | null> {
+  try {
+    return await cached(["mastery-champion", region, puuid, String(championId)], TTL.mastery, () =>
+      fetchRiotRaw<ChampionMastery>(
+        `${platformHost(region)}/lol/champion-mastery/v4/champion-masteries/by-puuid/${encodeURIComponent(puuid)}/by-champion/${championId}`,
+        masteryEntrySchema
+      )
+    );
+  } catch (error) {
+    if (error instanceof RiotApiError && error.status === 404) return null;
+    throw error;
+  }
 }
 
 export async function getPlayerChallenges(
