@@ -33,6 +33,7 @@ describe("toChampSelectView", () => {
       enemyChampionIds: [104],
       banIds: [24, 64],
       pickableIds: [1, 2, 3],
+      benchIds: [],
     });
   });
 
@@ -47,6 +48,11 @@ describe("toChampSelectView", () => {
   it("handles blind queues without positions", () => {
     const blind = { ...session, myTeam: session.myTeam.map((m) => ({ ...m, assignedPosition: "" })) };
     expect(toChampSelectView(blind, null)?.role).toBeNull();
+  });
+
+  it("reads the ARAM bench in both client formats", () => {
+    expect(toChampSelectView({ ...session, benchChampions: [{ championId: 131 }, { championId: 19 }] }, null)?.benchIds).toEqual([131, 19]);
+    expect(toChampSelectView({ ...session, benchChampionIds: [54] }, null)?.benchIds).toEqual([54]);
   });
 
   it("returns null for anything that is not a session", () => {

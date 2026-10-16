@@ -29,6 +29,9 @@ interface Session {
   theirTeam: Member[];
   actions?: Action[][];
   bans?: { myTeamBans?: number[]; theirTeamBans?: number[] };
+  /** ARAM bench; older clients sent `benchChampionIds`. */
+  benchChampions?: { championId?: number }[];
+  benchChampionIds?: number[];
 }
 
 function isSession(value: unknown): value is Session {
@@ -64,5 +67,9 @@ export function toChampSelectView(session: unknown, pickableIds: number[] | null
     enemyChampionIds: session.theirTeam.map((m) => m.championId ?? 0).filter((id) => id > 0),
     banIds: [...banIds],
     pickableIds,
+    benchIds: [
+      ...(session.benchChampions ?? []).map((b) => b?.championId ?? 0),
+      ...(session.benchChampionIds ?? []),
+    ].filter((id) => id > 0),
   };
 }

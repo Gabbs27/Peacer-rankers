@@ -14,6 +14,9 @@ const bridge: CompanionBridge = {
   setSpells: (spell1Id, spell2Id) => ipcRenderer.invoke(IPC.setSpells, spell1Id, spell2Id),
   setOverlayEnabled: (enabled) => ipcRenderer.invoke(IPC.setOverlayEnabled, enabled),
   openWeb: (path) => ipcRenderer.invoke(IPC.openWeb, path),
+  mayhemInsights: (championIds) => ipcRenderer.invoke(IPC.mayhemInsights, championIds),
+  collectMayhem: () => ipcRenderer.invoke(IPC.collectMayhem),
+  stopMayhem: () => ipcRenderer.invoke(IPC.stopMayhem),
 };
 
 contextBridge.exposeInMainWorld("companion", bridge);

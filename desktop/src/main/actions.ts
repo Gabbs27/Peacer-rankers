@@ -62,8 +62,31 @@ export async function importRunePage(http: LcuClient, page: NamedRunePage): Prom
   }
 }
 
-export async function setSpells(http: LcuClient, spell1Id: number, spell2Id: number): Promise<ActionResult> {
+interface SelectSession {
+  localPlayerCellId?: number;
+  myTeam?: { cellId: number; spell1Id?: number; spell2Id?: number }[];
+}
+
+/** Your spells right now, or null if the client doesn't say. */
+async function currentSpells(http: LcuClient): Promise<[number, number] | null> {
   try {
+    const session = await http.get<SelectSession>("/lol-champ-select/v1/session");
+    const me = session.myTeam?.find((p) => p.cellId === session.localPlayerCellId);
+    return me?.spell1Id && me.spell2Id ? [me.spell1Id, me.spell2Id] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sets both spells, keeping any you already have on the same key (muscle
+ * memory): asking for Flash + Ghost while Flash is on F gives Ghost + Flash.
+ */
+export async function setSpells(http: LcuClient, first: number, second: number): Promise<ActionResult> {
+  try {
+    const current = await currentSpells(http);
+    const swap = !!current && (first === current[1] || second === current[0]);
+    const [spell1Id, spell2Id] = swap ? [second, first] : [first, second];
     await http.request("PATCH", "/lol-champ-select/v1/session/my-selection", { spell1Id, spell2Id });
     return { ok: true, message: "Hechizos aplicados." };
   } catch (error) {

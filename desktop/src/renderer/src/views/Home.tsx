@@ -1,7 +1,7 @@
 import type { MatchData } from "@/lib/types";
 import { buildTodayPlan } from "@/lib/today-plan";
 import { recentForm } from "@/lib/social-stats";
-import type { Me } from "../../../shared/types";
+import type { MayhemStatus, Me } from "../../../shared/types";
 import { bridge } from "../bridge";
 import { profilePath } from "../data";
 import { Button, Section } from "../components/ui";
@@ -12,9 +12,43 @@ interface Props {
   puuid: string;
   matches: MatchData[] | null;
   error: string | null;
+  mayhem: MayhemStatus;
 }
 
-export default function Home({ me, puuid, matches, error }: Props) {
+function MayhemData({ mayhem }: { mayhem: MayhemStatus }) {
+  const progress = mayhem.runTarget > 0 ? Math.min(100, Math.round((mayhem.runAdded / mayhem.runTarget) * 100)) : 0;
+  return (
+    <Section title="Datos de ARAM: Mayhem" aside={mayhem.patch ? `parche ${mayhem.patch}` : undefined}>
+      <p className="text-sm text-gray-100">{mayhem.games.toLocaleString("es")} partidas analizadas</p>
+      <p className="mt-1 text-[11px] leading-snug text-gray-500">
+        Riot no publica Mayhem en su API, así que la app lee las partidas de tu cliente: las tuyas al conectar y, con el
+        botón, las de los jugadores de tus partidas. Solo guarda conteos, en tu Mac, y nunca mientras juegas.
+      </p>
+      {mayhem.running ? (
+        <div className="mt-3 space-y-1.5">
+          <div className="h-1.5 overflow-hidden rounded-full bg-gray-800" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full rounded-full bg-arcane-500/80 transition-all" style={{ width: `${progress}%` }} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-gray-400">
+              Analizando… {mayhem.runAdded} de {mayhem.runTarget} partidas nuevas
+            </span>
+            <Button variant="ghost" onClick={() => void bridge.stopMayhem()}>
+              Detener
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <Button onClick={() => void bridge.collectMayhem()}>Analizar más partidas</Button>
+        </div>
+      )}
+      {mayhem.error && <p className="mt-2 text-[11px] text-amber-300">{mayhem.error}</p>}
+    </Section>
+  );
+}
+
+export default function Home({ me, puuid, matches, error, mayhem }: Props) {
   const plan = matches ? buildTodayPlan(matches, puuid) : null;
   const form = matches ? recentForm(matches, puuid) : [];
 
@@ -47,6 +81,8 @@ export default function Home({ me, puuid, matches, error }: Props) {
           </div>
         </Section>
       )}
+
+      <MayhemData mayhem={mayhem} />
 
       <div className="flex justify-center pt-1">
         <Button variant="ghost" onClick={() => void bridge.openWeb(profilePath(me))}>

@@ -11,6 +11,9 @@ function unavailable(): CompanionBridge {
     setSpells: fail,
     setOverlayEnabled: fail,
     openWeb: fail,
+    mayhemInsights: fail,
+    collectMayhem: fail,
+    stopMayhem: fail,
   };
 }
 

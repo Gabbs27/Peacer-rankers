@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { MatchData, Region } from "@/lib/types";
 import { FALLBACK_DDRAGON_VERSION, getRunesDataUrl, getRuneIconUrl } from "@/lib/data-dragon";
 import { loadChampionList, type ChampionListEntry } from "@/lib/champion-client";
-import { INITIAL_STATE, type CompanionState, type Me } from "../../shared/types";
+import { INITIAL_STATE, type ChampionInsight, type CompanionState, type Me } from "../../shared/types";
 import { bridge } from "./bridge";
 
 export function useCompanionState(): CompanionState {
@@ -180,6 +180,12 @@ export function useHistory(
     return promise;
   });
   return { matches: data, error };
+}
+
+/** Mayhem insights for these champions; refetched when the local data grows. */
+export function useMayhemInsights(championIds: number[], gamesInStore: number): ChampionInsight[] | null {
+  const key = championIds.length > 0 ? `${championIds.join(",")}@${gamesInStore}` : null;
+  return useAsync(key, () => bridge.mayhemInsights(championIds)).data;
 }
 
 export function profilePath(me: Me): string {

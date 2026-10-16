@@ -54,11 +54,18 @@ describe("backend allow-list", () => {
 });
 
 /** In-memory stand-in for the League client: records every write. */
-function stubClient(pages: { id: number; name: string; isDeletable: boolean }[], opts: { postFails?: boolean } = {}) {
+function stubClient(
+  pages: { id: number; name: string; isDeletable: boolean }[],
+  opts: { postFails?: boolean; spells?: [number, number] } = {}
+) {
   const writes: { method: string; path: string; body?: unknown }[] = [];
   const client: LcuClient = {
     get: async <T,>(path: string) => {
       if (path === "/lol-perks/v1/pages") return pages as T;
+      if (path === "/lol-champ-select/v1/session" && opts.spells) {
+        const [spell1Id, spell2Id] = opts.spells;
+        return { localPlayerCellId: 2, myTeam: [{ cellId: 1, spell1Id: 6, spell2Id: 7 }, { cellId: 2, spell1Id, spell2Id }] } as T;
+      }
       throw new LcuError(404, "not found");
     },
     request: async <T,>(method: string, path: string, body?: unknown) => {
@@ -94,6 +101,16 @@ describe("importRunePage", () => {
 });
 
 describe("setSpells", () => {
+  it("keeps a spell you already have on the same key", async () => {
+    const flashOnF = stubClient([], { spells: [32, 4] });
+    await setSpells(flashOnF.client, 4, 6);
+    expect(flashOnF.writes[0].body).toEqual({ spell1Id: 6, spell2Id: 4 });
+
+    const flashOnD = stubClient([], { spells: [4, 32] });
+    await setSpells(flashOnD.client, 4, 6);
+    expect(flashOnD.writes[0].body).toEqual({ spell1Id: 4, spell2Id: 6 });
+  });
+
   it("patches the champion-select selection", async () => {
     const { client, writes } = stubClient([]);
     expect((await setSpells(client, 11, 4)).ok).toBe(true);

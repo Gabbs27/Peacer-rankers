@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import type { ScoutedPlayer } from "@/lib/scouting";
+import { MAYHEM_QUEUE } from "@/lib/mayhem";
 import type { Region } from "@/lib/types";
 import type { CompanionState } from "../../../shared/types";
 import { bridge } from "../bridge";
-import { errorMessage, type Champions } from "../data";
+import { errorMessage, useMayhemInsights, type Champions } from "../data";
+import { AugmentGroups } from "../components/augments";
 import { ChampIcon, Section, SignalChip } from "../components/ui";
 
 type ScoutResponse = { inGame: false } | { inGame: true; players: ScoutedPlayer[] };
@@ -48,7 +50,63 @@ interface Props {
   champs: Champions;
 }
 
+/** Mayhem isn't in Riot's public API (no scouting): show your champion's augments instead. */
+function MayhemGame({ state, champs }: { state: CompanionState; champs: Champions }) {
+  const championId = state.gameChampionId ?? 0;
+  const insights = useMayhemInsights(championId > 0 ? [championId] : [], state.mayhem.games);
+  const champ = champs.byId.get(championId);
+  const mine = insights?.[0];
+  return (
+    <Section title={champ ? `Aumentos para ${champ.name}` : "Tus aumentos"} aside={mine?.games ? `${mine.games} partidas` : undefined}>
+      {championId === 0 && <p className="text-xs text-gray-400">No se pudo saber tu campeón en esta partida.</p>}
+      {championId > 0 && mine && mine.augments.length > 0 && (
+        <AugmentGroups augments={mine.augments} championName={champ?.name} perGroup={5} />
+      )}
+      {championId > 0 && insights && (!mine || mine.augments.length === 0) && (
+        <p className="text-xs text-gray-400">Aún no hay suficientes partidas de {champ?.name ?? "este campeón"} en tus datos.</p>
+      )}
+    </Section>
+  );
+}
+
 export default function InGame({ puuid, region, state, champs }: Props) {
+  if (state.queueId === MAYHEM_QUEUE) {
+    return (
+      <div className="space-y-3 p-3">
+        <OverlaySwitch state={state} />
+        <MayhemGame state={state} champs={champs} />
+      </div>
+    );
+  }
+  return <ScoutedGame puuid={puuid} region={region} state={state} champs={champs} />;
+}
+
+function OverlaySwitch({ state }: { state: CompanionState }) {
+  return (
+    <div className="panel flex items-center justify-between gap-3 p-3.5 fade-in">
+      <div>
+        <p className="text-sm text-gray-100">Overlay en la partida</p>
+        <p className="text-[11px] text-gray-500">Tu plan, tu build o tus aumentos, sin temporizadores ni avisos.</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={state.overlayEnabled}
+        onClick={() => void bridge.setOverlayEnabled(!state.overlayEnabled)}
+        className={`no-drag relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+          state.overlayEnabled ? "bg-arcane-500/80" : "bg-gray-700"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${state.overlayEnabled ? "left-[18px]" : "left-0.5"}`}
+        />
+        <span className="sr-only">Mostrar overlay</span>
+      </button>
+    </div>
+  );
+}
+
+function ScoutedGame({ puuid, region, state, champs }: Props) {
   const [players, setPlayers] = useState<ScoutedPlayer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,26 +144,7 @@ export default function InGame({ puuid, region, state, champs }: Props) {
 
   return (
     <div className="space-y-3 p-3">
-      <div className="panel flex items-center justify-between gap-3 p-3.5 fade-in">
-        <div>
-          <p className="text-sm text-gray-100">Overlay en la partida</p>
-          <p className="text-[11px] text-gray-500">Tu plan y tu build, sin temporizadores ni avisos.</p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={state.overlayEnabled}
-          onClick={() => void bridge.setOverlayEnabled(!state.overlayEnabled)}
-          className={`no-drag relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-            state.overlayEnabled ? "bg-arcane-500/80" : "bg-gray-700"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${state.overlayEnabled ? "left-[18px]" : "left-0.5"}`}
-          />
-          <span className="sr-only">Mostrar overlay</span>
-        </button>
-      </div>
+      <OverlaySwitch state={state} />
 
       {!players && (
         <Section title="Scouting">
