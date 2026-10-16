@@ -11,6 +11,9 @@ export class LcuError extends Error {
   }
 }
 
+/** Match history comes from Riot's servers through the client: slower than its local data. */
+export const timeoutFor = (path: string) => (path.startsWith("/lol-match-history/") ? 20_000 : 5000);
+
 /** REST access to the League client on localhost. `http` exists only for tests. */
 export class LcuHttp {
   readonly authorization: string;
@@ -43,7 +46,7 @@ export class LcuHttp {
           },
           // The client serves a self-signed certificate, and only on 127.0.0.1.
           rejectUnauthorized: false,
-          timeout: 5000,
+          timeout: timeoutFor(path),
         },
         (res) => {
           let raw = "";

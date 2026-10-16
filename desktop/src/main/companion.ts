@@ -10,8 +10,25 @@ const SEARCH_INTERVAL_MS = 3000;
 const PICKABLE_TTL_MS = 2000;
 const PHASE_PATH = "/lol-gameflow/v1/gameflow-phase";
 const SESSION_PATH = "/lol-champ-select/v1/session";
+const GAMEFLOW_SESSION_PATH = "/lol-gameflow/v1/session";
+
+interface ChampionSelection {
+  puuid?: string;
+  championId?: number;
+}
+
+interface GameflowSession {
+  gameData?: {
+    queue?: { id?: number };
+    playerChampionSelections?: ChampionSelection[];
+    teamOne?: ChampionSelection[];
+    teamTwo?: ChampionSelection[];
+  };
+}
 
 interface CurrentSummoner {
+  /** The client's internal PUUID: only used to find you in the client's own data. */
+  puuid?: string;
   gameName?: string;
   tagLine?: string;
   displayName?: string;
@@ -31,6 +48,7 @@ export class Companion extends EventEmitter<{ state: [CompanionState] }> {
   private timer: NodeJS.Timeout | null = null;
   private stopped = true;
   private pickable: { at: number; ids: number[] | null } = { at: 0, ids: null };
+  private clientPuuid: string | null = null;
 
   getState(): CompanionState {
     return this.state;
@@ -57,6 +75,10 @@ export class Companion extends EventEmitter<{ state: [CompanionState] }> {
 
   setOverlayEnabled(enabled: boolean): void {
     this.update({ overlayEnabled: enabled });
+  }
+
+  setMayhemStatus(mayhem: CompanionState["mayhem"]): void {
+    this.update({ mayhem });
   }
 
   private update(patch: Partial<CompanionState>): void {
@@ -86,6 +108,7 @@ export class Companion extends EventEmitter<{ state: [CompanionState] }> {
       this.http = http;
       this.pickable = { at: 0, ids: null };
       this.update({ status: "connected", me, phase, champSelect: null });
+      if (phase !== "None") await this.refreshGameflow();
       if (phase === "ChampSelect") await this.refreshChampSelect();
       this.disconnect = subscribeEvents({
         creds,
@@ -102,6 +125,7 @@ export class Companion extends EventEmitter<{ state: [CompanionState] }> {
 
   private async loadMe(http: LcuHttp): Promise<Me> {
     const summoner = await http.get<CurrentSummoner>("/lol-summoner/v1/current-summoner");
+    this.clientPuuid = summoner.puuid ?? null;
     const platform = await http
       .get<unknown>("/lol-platform-config/v1/namespaces/LoginDataPacket/platformId")
       .catch(() => null);
@@ -122,12 +146,43 @@ export class Companion extends EventEmitter<{ state: [CompanionState] }> {
   private onEvent(event: LcuEvent): void {
     if (event.uri === PHASE_PATH) {
       const phase = typeof event.data === "string" ? event.data : "None";
-      this.update({ phase, champSelect: phase === "ChampSelect" ? this.state.champSelect : null });
+      const previous = this.state;
+      // Keep your champion once champion select ends; forget it out of a game.
+      const gameChampionId =
+        phase === "None" || phase === "Lobby" || phase === "ChampSelect"
+          ? null
+          : previous.phase === "ChampSelect"
+            ? previous.champSelect?.myChampionId || previous.gameChampionId
+            : previous.gameChampionId;
+      this.update({
+        phase,
+        champSelect: phase === "ChampSelect" ? previous.champSelect : null,
+        gameChampionId,
+        queueId: phase === "None" ? null : previous.queueId,
+      });
+      if (phase !== "None") void this.refreshGameflow();
       if (phase === "ChampSelect") void this.refreshChampSelect();
     } else if (event.uri === SESSION_PATH) {
       if (event.eventType === "Delete") this.update({ champSelect: null });
       else void this.refreshChampSelect(event.data);
     }
+  }
+
+  /** Queue of the lobby/game, and your champion if the app started mid-game. */
+  private async refreshGameflow(): Promise<void> {
+    const http = this.http;
+    if (!http) return;
+    const session = await http.get<GameflowSession>(GAMEFLOW_SESSION_PATH).catch(() => null);
+    if (!session) return; // keep what we know rather than forget the queue mid-game
+    const data = session.gameData;
+    const queueId = typeof data?.queue?.id === "number" && data.queue.id > 0 ? data.queue.id : null;
+    let gameChampionId = this.state.gameChampionId;
+    if (!gameChampionId && this.clientPuuid && data) {
+      const everyone = [...(data.playerChampionSelections ?? []), ...(data.teamOne ?? []), ...(data.teamTwo ?? [])];
+      const mine = everyone.find((s) => s.puuid === this.clientPuuid && (s.championId ?? 0) > 0);
+      if (mine?.championId && this.state.phase !== "ChampSelect") gameChampionId = mine.championId;
+    }
+    this.update({ queueId, gameChampionId });
   }
 
   private async refreshChampSelect(session?: unknown): Promise<void> {
@@ -151,7 +206,8 @@ export class Companion extends EventEmitter<{ state: [CompanionState] }> {
   private onClientClosed(): void {
     this.http = null;
     this.disconnect = null;
-    this.update({ status: "searching", phase: "None", me: null, champSelect: null });
+    this.clientPuuid = null;
+    this.update({ status: "searching", phase: "None", queueId: null, me: null, champSelect: null, gameChampionId: null });
     this.scheduleSearch();
   }
 }

@@ -7,10 +7,12 @@ juegas, con los datos de tus propias partidas:
 |---|---|
 | **Selección de campeones** | Ordena tu pool con tu récord en tu rol, contra el tipo de composición enemiga y contra los campeones rivales revelados, más el balance de daño con tu equipo. Para tu campeón: tu página de runas y tus hechizos con mejor balance (se aplican al cliente con un clic) y la build contra su composición. |
 | **Pantalla de carga / partida** | Scouting de los 10 jugadores: rango, winrate y señales como "primera vez con X", "especialista en X" o "en racha". Overlay opcional con tu prioridad y tu build. |
+| **ARAM: Mayhem** | Los aumentos que más eligen los jugadores de tu campeón, por rareza (como te los ofrece el juego), los hechizos más elegidos y tu banquillo. En la partida, la lista completa en la ventana y un resumen en el overlay. |
 | **Fin de partida** | Enlace a tu análisis completo en la web. |
 
-Todo se calcula con tu historial (no hay IA ni estadísticas globales), y cada
-recomendación dice con cuántas partidas está respaldada.
+Todo se calcula con tu historial, salvo Mayhem, que usa las partidas que la app lee
+de tu cliente (ver abajo). No hay IA, y cada recomendación dice con cuántas
+partidas está respaldada.
 
 ## Requisitos
 
@@ -39,9 +41,33 @@ Para desarrollo: `npm run dev` (Electron con recarga en caliente).
   servidor. Solo se permiten unas pocas rutas de lectura.
 - **Seguridad**: ventanas aisladas (sin Node, `contextIsolation`, sandbox), cada
   mensaje de la interfaz se valida en el proceso principal y la interfaz solo puede
-  cargar recursos propios y de Data Dragon (CSP).
+  cargar recursos propios, de Data Dragon y los iconos de CommunityDragon (CSP).
 - La lógica (recomendaciones, runas, scouting, plan) es la misma de la web:
   `../src/lib`.
+
+## ARAM: Mayhem
+
+Riot no publica las partidas de Mayhem (cola 2400) en su API pública, pero el
+cliente sí las tiene. La app las lee de ahí y las va sumando a un JSON local:
+
+- **Qué lee**: tus partidas de Mayhem al conectar y al terminar cada partida. Con
+  «Analizar más partidas», las de los jugadores de esas partidas: 250 nuevas por
+  pulsación, una petición cada ~1,2 s, y se detiene sola en cuanto entras a una
+  sala, a la cola o a una partida. Cada pulsación sigue donde se quedó la anterior.
+- **Qué guarda**: `~/Library/Application Support/LoL Tracker/mayhem-stats.json`, con
+  conteos por parche y campeón (partidas, victorias, aumentos y pares de hechizos) y
+  los ids de las partidas ya contadas para no repetirlas. Ni nombres ni ids de
+  jugadores: la lista de jugadores por visitar solo vive en memoria. Unas 340
+  partidas ocupan ~150 KB.
+- **Cómo ordena**: por lo que más eligen los jugadores de ese campeón en los dos
+  parches más recientes. Distinguir aumentos por winrate necesita miles de partidas
+  por aumento (una partida mueve un winrate 50 puntos); con unos cientos, las
+  diferencias son ruido. Por eso ▲/▼ solo aparece cuando, con todos los campeones,
+  un aumento gana claramente más o menos (3 errores estándar y 2+ puntos).
+- **Nombres e iconos**: el catálogo de aumentos del propio cliente e iconos de
+  CommunityDragon.
+- Seguir historiales ajenos desde el cliente no es una API oficial de Riot: por eso
+  va despacio, solo cuando lo pides y nunca mientras juegas.
 
 ## Reglas de Riot
 
@@ -51,6 +77,8 @@ Para desarrollo: `npm run dev` (Electron con recarga en caliente).
   en Solo/Duo); el scouting empieza cuando la partida carga.
 - Las runas solo se escriben al pulsar el botón, y la app solo reemplaza la página
   que creó ella (o una que renombres a «LoL Tracker…»): nunca borra tus páginas.
+  Los hechizos también se aplican con un botón y respetan la tecla (D/F) de los que
+  ya tienes.
 - Para distribuirla a otras personas hace falta la aprobación de Riot (proceso de
   aplicaciones de terceros) y un Developer ID de Apple para firmarla y notarizarla.
 
@@ -58,7 +86,8 @@ Para desarrollo: `npm run dev` (Electron con recarga en caliente).
 
 - `npm run web`: la interfaz en el navegador con datos reales y una fase simulada:
   `http://localhost:5173/?scenario=champselect` (también `home`, `ingame`,
-  `postgame`) y `/overlay.html?scenario=ingame`.
+  `postgame`, `mayhem` y `mayhemgame`) y `/overlay.html?scenario=ingame` (o
+  `mayhemgame`).
 - `LOL_TRACKER_LCU=<puerto>:<token>`: conecta la app a un cliente concreto (por
   ejemplo uno falso para pruebas) aunque el real esté abierto.
 - `LOL_TRACKER_WEB=http://localhost:3000`: usa una API web local en vez de producción.

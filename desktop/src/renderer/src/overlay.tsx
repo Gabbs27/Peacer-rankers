@@ -1,9 +1,11 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { buildTodayPlan } from "@/lib/today-plan";
+import { MAYHEM_QUEUE } from "@/lib/mayhem";
 import { analyzeChampionComp, getDefensiveRecommendations } from "@/lib/builds";
 import { bridge } from "./bridge";
-import { useApiPuuid, useChampions, useCompanionState, useGameGeneration, useHistory } from "./data";
+import { useApiPuuid, useChampions, useCompanionState, useGameGeneration, useHistory, useMayhemInsights } from "./data";
+import { AugmentGroups } from "./components/augments";
 import { ItemIcon, Sigil } from "./components/ui";
 import "./styles.css";
 
@@ -17,7 +19,39 @@ interface LiveGameResponse {
  * game): your top priority and the build against their composition. No live
  * timers and no calls telling you what to do.
  */
+function Frame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="m-1 rounded-xl border border-gold-500/25 bg-gray-950/80 p-3 shadow-2xl backdrop-blur-sm">
+      <p className="mb-2 flex items-center gap-1.5">
+        <Sigil className="h-3.5 w-3.5" />
+        <span className="font-display text-[11px] font-bold tracking-wide text-gold-100">LoL Tracker</span>
+      </p>
+      {children}
+    </div>
+  );
+}
+
+/** Mayhem: your champion's best augments by rarity (static, pre-game data). */
+function MayhemOverlay({ championId, games }: { championId: number; games: number }) {
+  const insights = useMayhemInsights([championId], games);
+  const augments = insights?.[0]?.augments ?? [];
+  if (augments.length === 0) return null;
+  return (
+    <Frame>
+      <AugmentGroups augments={augments} perGroup={2} compact />
+    </Frame>
+  );
+}
+
 function Overlay() {
+  const state = useCompanionState();
+  if (state.queueId === MAYHEM_QUEUE && state.gameChampionId && (state.phase === "InProgress" || state.phase === "Reconnect")) {
+    return <MayhemOverlay championId={state.gameChampionId} games={state.mayhem.games} />;
+  }
+  return <RiftOverlay />;
+}
+
+function RiftOverlay() {
   const state = useCompanionState();
   const champs = useChampions();
   const me = state.me;
@@ -57,11 +91,7 @@ function Overlay() {
   if (!action && !build) return null;
 
   return (
-    <div className="m-1 rounded-xl border border-gold-500/25 bg-gray-950/80 p-3 shadow-2xl backdrop-blur-sm">
-      <p className="mb-2 flex items-center gap-1.5">
-        <Sigil className="h-3.5 w-3.5" />
-        <span className="font-display text-[11px] font-bold tracking-wide text-gold-100">LoL Tracker</span>
-      </p>
+    <Frame>
       {action && (
         <div className="mb-2.5">
           <p className="label">Tu prioridad</p>
@@ -79,7 +109,7 @@ function Overlay() {
           </div>
         </div>
       )}
-    </div>
+    </Frame>
   );
 }
 

@@ -10,12 +10,13 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const alias = { "@": here("../src") };
 
 // Production pages may only load the app's own files plus Data Dragon
-// (champion/item/rune images and data). Dev keeps Vite's inline HMR working.
+// (champion/item/rune images and data) and CommunityDragon images (augment
+// icons). Dev keeps Vite's inline HMR working.
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://ddragon.leagueoflegends.com",
+  "img-src 'self' data: https://ddragon.leagueoflegends.com https://raw.communitydragon.org",
   "font-src 'self' data:",
   "connect-src 'self' https://ddragon.leagueoflegends.com",
 ].join("; ");

@@ -3,9 +3,68 @@ import { join } from "node:path";
 import { Companion } from "./companion";
 import { importRunePage, setSpells, validateRunePage, validateSpells } from "./actions";
 import { apiGet, isAllowedApiPath, webUrl } from "./backend";
+import { MayhemCollector } from "./mayhem/collector";
+import { loadAugmentCatalog } from "./mayhem/catalog";
+import { championInsights } from "./mayhem/insights";
+import type { AugmentInfo } from "../shared/augments";
 import { IPC, type CompanionState } from "../shared/types";
 
 const companion = new Companion();
+const collector = new MayhemCollector(join(app.getPath("userData"), "mayhem-stats.json"));
+let augmentCatalog = new Map<number, AugmentInfo>();
+
+/** Following other players only happens while you're not in a game. */
+const IDLE_PHASES = new Set(["None", "Lobby", "EndOfGame", "PreEndOfGame", "WaitingForStats", "TerminatedInError"]);
+let previous: CompanionState | null = null;
+
+let ownGamesRead = false;
+let ownRetries = 0;
+const OWN_RETRY_MS = 30_000;
+const OWN_MAX_RETRIES = 3;
+
+/** Reads your own games; the client's history service can lag right after login, so retry a few times. */
+async function readOwnGames(): Promise<void> {
+  const client = companion.client;
+  if (!client) return;
+  await collector.collectOwn(client);
+  if (collector.status().error && ownRetries < OWN_MAX_RETRIES) {
+    ownRetries++;
+    setTimeout(() => {
+      if (companion.client && IDLE_PHASES.has(companion.getState().phase)) void readOwnGames();
+    }, OWN_RETRY_MS);
+  }
+}
+
+/**
+ * Mayhem data upkeep on client events: your own games once per connection
+ * (only outside a game) and again after each game.
+ */
+function onStateForMayhem(state: CompanionState): void {
+  const client = companion.client;
+  if (client && state.status === "connected" && previous?.status !== "connected") {
+    ownGamesRead = false;
+    ownRetries = 0;
+    loadAugmentCatalog(client)
+      .then((catalog) => (augmentCatalog = catalog))
+      .catch(() => {});
+  }
+  if (client && state.status === "connected" && !ownGamesRead && IDLE_PHASES.has(state.phase)) {
+    ownGamesRead = true;
+    void readOwnGames();
+  }
+  if (state.phase === "EndOfGame" && previous?.phase !== "EndOfGame") {
+    // The finished game takes a moment to show up in the client's history.
+    setTimeout(() => {
+      const current = companion.client;
+      if (current) void collector.collectOwn(current);
+    }, 15_000);
+  }
+  if (state.status !== "connected") {
+    collector.stop();
+    collector.forgetPlayers();
+  }
+  previous = state;
+}
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
 
@@ -136,17 +195,39 @@ function registerIpc(): void {
     const url = webUrl(path);
     if (trusted(event) && url) await shell.openExternal(url);
   });
+
+  ipcMain.handle(IPC.mayhemInsights, (event, ids: unknown) => {
+    if (!trusted(event) || !Array.isArray(ids)) return [];
+    const championIds = ids.filter((n): n is number => Number.isInteger(n) && n > 0 && n < 10_000).slice(0, 12);
+    return championInsights(collector.data, augmentCatalog, championIds);
+  });
+
+  ipcMain.handle(IPC.collectMayhem, (event) => {
+    const client = companion.client;
+    if (!trusted(event) || !client) return;
+    void collector.expand(client, () => companion.client === client && IDLE_PHASES.has(companion.getState().phase));
+  });
+
+  ipcMain.handle(IPC.stopMayhem, (event) => {
+    if (trusted(event)) collector.stop();
+  });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   registerIpc();
   mainWindow = createMainWindow();
   overlayWindow = createOverlayWindow();
   companion.on("state", (state) => {
     broadcast(state);
     syncOverlay(state);
+    onStateForMayhem(state);
   });
+  collector.on("status", (status) => companion.setMayhemStatus(status));
+  await collector.load();
   companion.start();
 });
 
-app.on("before-quit", () => companion.stop());
+app.on("before-quit", () => {
+  collector.stop();
+  companion.stop();
+});

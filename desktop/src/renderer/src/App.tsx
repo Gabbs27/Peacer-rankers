@@ -4,11 +4,14 @@ import { useApiPuuid, useChampions, useCompanionState, useGameGeneration, useHis
 import Searching from "./views/Searching";
 import Home from "./views/Home";
 import ChampSelect from "./views/ChampSelect";
+import AramSelect from "./views/AramSelect";
 import InGame from "./views/InGame";
 import PostGame from "./views/PostGame";
 import { Sigil } from "./components/ui";
 
 const IN_GAME = new Set(["GameStart", "InProgress", "Reconnect"]);
+/** ARAM and ARAM: Mayhem: random champions, no draft. */
+const ARAM_QUEUES = new Set([450, 2400]);
 const POST_GAME = new Set(["WaitingForStats", "PreEndOfGame", "EndOfGame"]);
 
 export default function App() {
@@ -39,6 +42,8 @@ export default function App() {
     body = <p className="p-6 text-center text-sm text-amber-300">No se pudo encontrar tu cuenta en LoL Tracker: {account.error}</p>;
   } else if (!champs || !account.puuid) {
     body = <p className="p-6 text-center text-xs text-gray-500 animate-pulse">Preparando tus datos…</p>;
+  } else if (state.phase === "ChampSelect" && state.champSelect && ARAM_QUEUES.has(state.queueId ?? 0)) {
+    body = <AramSelect view={state.champSelect} queueId={state.queueId!} champs={champs} mayhem={state.mayhem} />;
   } else if (state.phase === "ChampSelect" && state.champSelect) {
     body = (
       <ChampSelect puuid={account.puuid} view={state.champSelect} champs={champs} matches={matches} historyError={error} />
@@ -46,7 +51,7 @@ export default function App() {
   } else if (IN_GAME.has(state.phase)) {
     body = <InGame puuid={account.puuid} region={me.region} state={state} champs={champs} />;
   } else if (POST_GAME.has(state.phase)) body = <PostGame me={me} />;
-  else body = <Home me={me} puuid={account.puuid} matches={matches} error={error} />;
+  else body = <Home me={me} puuid={account.puuid} matches={matches} error={error} mayhem={state.mayhem} />;
 
   return (
     <div className="flex h-full flex-col">
