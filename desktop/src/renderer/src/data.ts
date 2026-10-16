@@ -77,6 +77,49 @@ export function useChampions(): Champions | null {
   return useAsync("champions", loadChampions).data;
 }
 
+export interface ItemInfo {
+  name: string;
+  /** Finished items and upgraded boots: what a build shows (not components or consumables). */
+  finished: boolean;
+}
+
+interface DDragonItem {
+  name: string;
+  into?: string[];
+  tags?: string[];
+  consumed?: boolean;
+  gold?: { total?: number };
+}
+
+const itemsPromises = new Map<string, Promise<Map<number, ItemInfo>>>();
+
+function loadItems(version: string): Promise<Map<number, ItemInfo>> {
+  let promise = itemsPromises.get(version);
+  if (!promise) {
+    promise = fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/es_MX/item.json`)
+      .then((r) => r.json() as Promise<{ data: Record<string, DDragonItem> }>)
+      .then(
+        ({ data }) =>
+          new Map(
+            Object.entries(data).map(([id, item]): [number, ItemInfo] => {
+              const gold = item.gold?.total ?? 0;
+              const boots = !!item.tags?.includes("Boots") && gold >= 900;
+              const finished = !item.consumed && (boots || ((item.into?.length ?? 0) === 0 && gold >= 1500));
+              return [Number(id), { name: item.name, finished }];
+            })
+          )
+      );
+    promise.catch(() => itemsPromises.delete(version));
+    itemsPromises.set(version, promise);
+  }
+  return promise;
+}
+
+/** Data Dragon's items: names, and which ones a build shows. */
+export function useItems(version: string | null): Map<number, ItemInfo> | null {
+  return useAsync(version ? `items@${version}` : null, () => loadItems(version!)).data;
+}
+
 export interface RuneInfo {
   name: string;
   icon: string;

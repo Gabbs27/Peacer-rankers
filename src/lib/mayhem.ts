@@ -1,8 +1,9 @@
 // ARAM: Mayhem augment statistics. Riot's public API does not serve Mayhem
 // games (queue 2400), but the League client does, so the Mac app reads them
 // from the local client and accumulates plain counts here: per patch, per
-// champion, games and wins with each augment and each summoner-spell pair.
-// No player names or ids are stored, only the game ids already counted.
+// champion, games and wins with each augment, summoner-spell pair and final
+// item, plus which items each augment's takers end with. No player names or
+// ids are stored, only the game ids already counted.
 
 export const MAYHEM_QUEUE = 2400;
 const MIN_DURATION_S = 300; // shorter games are remakes
@@ -30,23 +31,46 @@ export interface ChampionStats {
   augments: Record<string, Tally>;
   /** "4-32": spell ids sorted, so D/F order doesn't split the sample. */
   spells: Record<string, Tally>;
+  /** Items in the final inventory (the trinket slot aside). */
+  items?: Record<string, Tally>;
+  /** Games whose items were counted: older stores counted games before items. */
+  itemGames?: number;
 }
 
 export interface PatchStats {
   games: number;
   champions: Record<string, ChampionStats>;
+  /** Per augment, how many of the players who took it ended with each item. */
+  augmentItems?: Record<string, Record<string, number>>;
 }
 
 export interface MayhemStore {
-  version: 1;
+  version: 2;
   /** Game ids already counted, so re-reading a history never double counts. */
   seen: number[];
   /** Keyed by "major.minor", e.g. "16.20". */
   patches: Record<string, PatchStats>;
+  /** Games counted before items were stored, still to be read again for their items. */
+  itemsPending: number[];
 }
 
 export function emptyStore(): MayhemStore {
-  return { version: 1, seen: [], patches: {} };
+  return { version: 2, seen: [], patches: {}, itemsPending: [] };
+}
+
+/**
+ * A store read from disk, or null if it isn't one. Version 1 counted games
+ * without their items: its games are queued to be read again for them.
+ */
+export function migrateStore(data: unknown): MayhemStore | null {
+  const s = data as { version?: unknown; seen?: unknown; patches?: unknown; itemsPending?: unknown } | null;
+  if (!s || typeof s !== "object" || !Array.isArray(s.seen) || !s.patches || typeof s.patches !== "object") return null;
+  const seen = s.seen.filter((id): id is number => Number.isInteger(id));
+  const patches = s.patches as Record<string, PatchStats>;
+  if (s.version === 1) return { version: 2, seen, patches, itemsPending: [...seen] };
+  if (s.version !== 2) return null;
+  const pending = Array.isArray(s.itemsPending) ? s.itemsPending.filter((id): id is number => Number.isInteger(id)) : [];
+  return { version: 2, seen, patches, itemsPending: pending };
 }
 
 /** "16.20.824.8524" -> "16.20" */
@@ -64,11 +88,39 @@ function augmentsOf(stats: Record<string, unknown>): number[] {
   return ids;
 }
 
+/** item0-item5; item6 is the trinket (Poro-Snax in ARAM). */
+function itemsOf(stats: Record<string, unknown>): number[] {
+  const ids = new Set<number>();
+  for (let i = 0; i <= 5; i++) {
+    const id = stats[`item${i}`];
+    if (typeof id === "number" && id > 0) ids.add(id);
+  }
+  return [...ids];
+}
+
 function bump(tally: Record<string, Tally>, key: string, win: boolean): void {
   const t = tally[key] ?? [0, 0];
   t[0]++;
   if (win) t[1]++;
   tally[key] = t;
+}
+
+/** Counts the final items of a game whose champions are already in `bucket`. */
+function countItems(bucket: PatchStats, game: ClientGame): void {
+  const byAugment = (bucket.augmentItems ??= {});
+  for (const p of game.participants) {
+    const champ = bucket.champions[String(p.championId)];
+    if (!champ) continue;
+    const stats = p.stats ?? {};
+    const items = itemsOf(stats);
+    champ.itemGames = (champ.itemGames ?? 0) + 1;
+    const tally = (champ.items ??= {});
+    for (const id of items) bump(tally, String(id), stats.win === true);
+    for (const augment of augmentsOf(stats)) {
+      const row = (byAugment[String(augment)] ??= {});
+      for (const id of items) row[String(id)] = (row[String(id)] ?? 0) + 1;
+    }
+  }
 }
 
 /**
@@ -93,8 +145,29 @@ export function addGame(store: MayhemStore, seen: Set<number>, game: ClientGame)
     const spells = [p.spell1Id, p.spell2Id].sort((a, b) => a - b).join("-");
     bump(champ.spells, spells, win);
   }
+  countItems(bucket, game);
   seen.add(game.gameId);
   store.seen.push(game.gameId);
+  return true;
+}
+
+/**
+ * Adds the items of a game counted before items were stored. Returns false
+ * if the game wasn't waiting for them.
+ */
+export function addItems(store: MayhemStore, game: ClientGame): boolean {
+  if (!forgetPendingItems(store, game.gameId)) return false;
+  const patch = patchOf(game.gameVersion);
+  const bucket = patch ? store.patches[patch] : undefined;
+  if (bucket && Array.isArray(game.participants) && game.participants.length === 10) countItems(bucket, game);
+  return true;
+}
+
+/** Stops waiting for a game's items (e.g. the client no longer has it). */
+export function forgetPendingItems(store: MayhemStore, gameId: number): boolean {
+  const at = store.itemsPending.indexOf(gameId);
+  if (at < 0) return false;
+  store.itemsPending.splice(at, 1);
   return true;
 }
 
@@ -112,15 +185,17 @@ export function patchesNewestFirst(store: MayhemStore): string[] {
   });
 }
 
-const emptyChampion = (): ChampionStats => ({ games: 0, wins: 0, augments: {}, spells: {} });
+const emptyChampion = (): ChampionStats => ({ games: 0, wins: 0, augments: {}, spells: {}, items: {}, itemGames: 0 });
 
 function addInto(target: ChampionStats, source: ChampionStats): void {
   target.games += source.games;
   target.wins += source.wins;
-  for (const field of ["augments", "spells"] as const) {
-    for (const [key, [g, w]] of Object.entries(source[field])) {
-      const t = target[field][key] ?? [0, 0];
-      target[field][key] = [t[0] + g, t[1] + w];
+  target.itemGames = (target.itemGames ?? 0) + (source.itemGames ?? 0);
+  for (const field of ["augments", "spells", "items"] as const) {
+    const into = (target[field] ??= {});
+    for (const [key, [g, w]] of Object.entries(source[field] ?? {})) {
+      const t = into[key] ?? [0, 0];
+      into[key] = [t[0] + g, t[1] + w];
     }
   }
 }
@@ -275,6 +350,85 @@ export function bestMayhemSpells(store: MayhemStore, championId: number, minGame
     }
   }
   return best;
+}
+
+export interface ItemPick {
+  itemId: number;
+  games: number;
+  wins: number;
+  /** Share of the champion's games (with items counted) that ended with it, 0-100. */
+  pickRate: number;
+}
+
+/**
+ * Items this champion's players end with, most built first, from the two
+ * newest patches. Components and consumables are in here too: the caller
+ * knows the item data and keeps the finished ones.
+ */
+export function buildFor(store: MayhemStore, championId: number, limit = 20): ItemPick[] {
+  const champ = championOver(store, championId, 2);
+  const itemGames = champ?.itemGames ?? 0;
+  if (!champ?.items || itemGames === 0) return [];
+  return Object.entries(champ.items)
+    .map(([id, [games, wins]]) => ({ itemId: Number(id), games, wins, pickRate: Math.round((games / itemGames) * 100) }))
+    .sort((a, b) => b.games - a.games || b.wins - a.wins)
+    .slice(0, limit);
+}
+
+export interface PairedItem {
+  itemId: number;
+  /** Players who took the augment and ended with the item. */
+  games: number;
+  /** How many times more often than those same champions usually build it. */
+  lift: number;
+}
+
+/** Fewer builds than this can't show an item goes with an augment. */
+const MIN_PAIRED_GAMES = 3;
+const MIN_PAIRED_LIFT = 1.3;
+/** With this many games with items, an item a champion's players never built doesn't fit it. */
+const FIT_GAMES = 20;
+
+/**
+ * The items that the players who take this augment end with more often than
+ * their champions usually do (so an AP augment isn't "paired" with AP items
+ * just because AP champions take it), most extra builds first. With
+ * `championId`, items that champion's players never build are left out once
+ * there's enough of its games to tell.
+ */
+export function augmentItemsFor(
+  store: MayhemStore,
+  augmentId: number,
+  opts: { championId?: number; limit?: number } = {}
+): PairedItem[] {
+  const patches = patchesNewestFirst(store).slice(0, 2);
+  const observed: Record<string, number> = {};
+  for (const patch of patches) {
+    for (const [id, n] of Object.entries(store.patches[patch].augmentItems?.[String(augmentId)] ?? {})) {
+      observed[id] = (observed[id] ?? 0) + n;
+    }
+  }
+  if (Object.keys(observed).length === 0) return [];
+  // Expected builds: each champion's item rate times its games with the augment.
+  // Both counts only cover games with items, so older stores don't skew it.
+  const expected: Record<string, number> = {};
+  for (const c of recentChampions(store, 2).values()) {
+    const taken = c.augments[String(augmentId)]?.[0] ?? 0;
+    if (taken === 0 || !c.items) continue;
+    for (const id of Object.keys(observed)) {
+      const built = c.items[id]?.[0] ?? 0;
+      if (built > 0) expected[id] = (expected[id] ?? 0) + (taken * built) / c.games;
+    }
+  }
+  const fit = opts.championId === undefined ? null : championOver(store, opts.championId, 2);
+  const fits = (id: number) => !fit || (fit.itemGames ?? 0) < FIT_GAMES || (fit.items?.[String(id)]?.[0] ?? 0) > 0;
+  return Object.entries(observed)
+    .map(([id, games]) => ({ itemId: Number(id), games, expected: expected[id] ?? 0 }))
+    .filter((x) => x.games >= MIN_PAIRED_GAMES && x.expected > 0 && x.games / x.expected >= MIN_PAIRED_LIFT)
+    .filter((x) => fits(x.itemId))
+    .sort((a, b) => b.games - b.expected - (a.games - a.expected))
+    .slice(0, opts.limit ?? 4)
+    .map(({ itemId, games, expected: e }) => ({ itemId, games, lift: Math.round((games / e) * 10) / 10 }));
 }
 
 /** True when `a` wins clearly more than `b`: 5+ points and a gap luck rarely explains. */

@@ -81,6 +81,18 @@ export class Companion extends EventEmitter<{ state: [CompanionState] }> {
     this.update({ mayhem });
   }
 
+  setLive(live: CompanionState["live"]): void {
+    this.update({ live });
+  }
+
+  setOffer(offer: CompanionState["offer"]): void {
+    this.update({ offer });
+  }
+
+  setScreenAccess(screenAccess: CompanionState["screenAccess"]): void {
+    if (screenAccess !== this.state.screenAccess) this.update({ screenAccess });
+  }
+
   private update(patch: Partial<CompanionState>): void {
     this.state = { ...this.state, ...patch };
     this.emit("state", this.state);
@@ -177,10 +189,12 @@ export class Companion extends EventEmitter<{ state: [CompanionState] }> {
     const data = session.gameData;
     const queueId = typeof data?.queue?.id === "number" && data.queue.id > 0 ? data.queue.id : null;
     let gameChampionId = this.state.gameChampionId;
-    if (!gameChampionId && this.clientPuuid && data) {
+    // After a game the session still lists its champions: only read them while one runs.
+    const inGame = ["GameStart", "InProgress", "Reconnect"].includes(this.state.phase);
+    if (!gameChampionId && inGame && this.clientPuuid && data) {
       const everyone = [...(data.playerChampionSelections ?? []), ...(data.teamOne ?? []), ...(data.teamTwo ?? [])];
       const mine = everyone.find((s) => s.puuid === this.clientPuuid && (s.championId ?? 0) > 0);
-      if (mine?.championId && this.state.phase !== "ChampSelect") gameChampionId = mine.championId;
+      if (mine?.championId) gameChampionId = mine.championId;
     }
     this.update({ queueId, gameChampionId });
   }

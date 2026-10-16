@@ -14,6 +14,7 @@ function unavailable(): CompanionBridge {
     mayhemInsights: fail,
     collectMayhem: fail,
     stopMayhem: fail,
+    requestScreenAccess: fail,
   };
 }
 
